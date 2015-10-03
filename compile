@@ -1,0 +1,21 @@
+#! /bin/sh
+
+#Options for GCC compiler
+COMPILE_OPT="-cc -O3 -CFLAGS -Wno-attributes"
+
+#Comment this line to disable VCD generation
+TRACE_OPT="-trace"
+
+#Verilog top module
+TOP_FILE=tv80s
+
+#C++ support files
+#CPP_FILES=\
+#"main.cpp\
+# dpi_trace.cpp\
+# musashi.cpp"
+
+verilator $TOP_FILE.v $COMPILE_OPT $TRACE_OPT -top-module $TOP_FILE -exe $CPP_FILES
+cd ./obj_dir
+#make -j -f V$TOP_FILE.mk V$TOP_FILE
+cd ..
