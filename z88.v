@@ -119,8 +119,19 @@ assign z80_di =
 
 always @(posedge clk)
 begin
-
-
+  if (reset_n == 1'b0) begin
+    com <= 8'b00000000;
+  end else if (clk == 1'b1) begin
+    if (!z80_iorq_n & !z80_wr_n) begin
+      // IO register write
+      case(z80_a[7:0])
+        8'hB0: com <= z80_do;
+        default: ;
+      endcase
+    end else if (!z80_iorq_n & !z80_rd_n) begin
+      // IO register read
+    end
+  end
 end
 
 endmodule
