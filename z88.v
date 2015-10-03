@@ -9,6 +9,10 @@ module z88 (
   rom_di
 );
 
+// Clock and Reset
+input           clk;
+input           reset_n;
+
 // RAM
 output  [18:0]  ram_a;
 output  [7:0]   ram_do;
@@ -19,7 +23,7 @@ output          ram_we_n;
 
 // ROM
 output  [18:0]  rom_a;
-input   [7:0]   rom_do;
+input   [7:0]   rom_di;
 output          rom_ce_n;
 output          rom_oe_n;
 
@@ -82,19 +86,20 @@ assign z80_nmi_n = 1'b1;
 assign z80_busrq_n = 1'b1;
 
 assign z80_a_full =
-  (z80_a[15:14] == 2'b11) ? { sr3, z80_a[14:0] }
-  :  (z80_a[15:14] == 2'b10) ? { sr2, z80_a[14:0] }
-  :  (z80_a[15:14] == 2'b01) ? { sr1, z80_a[14:0] }
-  :  (z80_a[15:13] == 3'b001) ? { sr0, z80_a[13:0] }
+  (z80_a[15:14] == 2'b11) ? { sr3, z80_a[13:0] }
+  :  (z80_a[15:14] == 2'b10) ? { sr2, z80_a[13:0] }
+  :  (z80_a[15:14] == 2'b01) ? { sr1, z80_a[13:0] }
+  :  (z80_a[15:13] == 3'b001) ? { sr0, 1'b1, z80_a[12:0] }
   :  (z80_a[15:13] == 3'b000) ?
-    (com(RAMS) == 1'b0) ? { 8'b00000000, z80_a[13:0] }
-    : { 8'b00010000, z80_a[13:0] };
+    (com[2] == 1'b0) ? { 8'b00000000, 1'b0, z80_a[12:0] }
+    : { 8'b00010000, 1'b0, z80_a[12:0] }
+  : 22'b11_1111_1111_1111_1111_1111;
 
 assign z80_romsel =
-  (z80_a_full[21:19] = 3'b000) ? 1'b1 : 1'b0;
+  (z80_a_full[21:19] == 3'b000) ? 1'b1 : 1'b0;
 
 assign z80_ramsel =
-  (z80_a_full[21:19] = 3'b001) ? 1'b1 : 1'b0;
+  (z80_a_full[21:19] == 3'b001) ? 1'b1 : 1'b0;
 
 
 assign ram_a = z80_a_full[18:0];
@@ -111,5 +116,11 @@ assign z80_di =
   z80_romsel ? rom_di
   : z80_ramsel ? ram_di
   : 8'b11111111;
+
+always @(posedge clk)
+begin
+
+
+end
 
 endmodule
