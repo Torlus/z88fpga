@@ -1,0 +1,43 @@
+[*]
+[*] GTKWave Analyzer v3.3.65 (w)1999-2015 BSI
+[*] Sun Oct  4 09:36:06 2015
+[*]
+[dumpfile] "/Users/greg/Projects/z88fpga/z88_0000.vcd"
+[dumpfile_mtime] "Sun Oct  4 09:27:01 2015"
+[dumpfile_size] 10415124
+[savefile] "/Users/greg/Projects/z88fpga/view.gtkw"
+[timestart] 0
+[size] 1627 919
+[pos] -1 -1
+*-18.000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.v.
+[treeopen] TOP.v.z80.
+[sst_width] 193
+[signals_width] 167
+[sst_expanded] 1
+[sst_vpaned_height] 325
+@28
+TOP.v.clk
+TOP.v.reset_n
+@22
+TOP.v.rom_a[18:0]
+@28
+TOP.v.rom_ce_n
+TOP.v.rom_oe_n
+@22
+TOP.v.rom_di[7:0]
+@28
+TOP.v.z80_m1_n
+TOP.v.z80_mreq_n
+@22
+TOP.v.z80_a[15:0]
+TOP.v.z80_a_full[21:0]
+@28
+TOP.v.z80_iorq_n
+@22
+TOP.v.z80_do[7:0]
+@29
+TOP.v.z80_wr_n
+[pattern_trace] 1
+[pattern_trace] 0

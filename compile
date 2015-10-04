@@ -10,12 +10,13 @@ TRACE_OPT="-trace"
 TOP_FILE=z88
 
 #C++ support files
-#CPP_FILES=\
+CPP_FILES=\
+"main.cpp"
 #"main.cpp\
 # dpi_trace.cpp\
 # musashi.cpp"
 
 verilator $TOP_FILE.v $COMPILE_OPT $TRACE_OPT -top-module $TOP_FILE -exe $CPP_FILES
 cd ./obj_dir
-#make -j -f V$TOP_FILE.mk V$TOP_FILE
+make -j -f V$TOP_FILE.mk V$TOP_FILE
 cd ..
