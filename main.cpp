@@ -17,6 +17,8 @@
 // Half period (in ps) of a 33.333 MHz clock
 #define STEP_PS      ((vluint64_t)15000)
 
+#define ROM_SIZE      (1<<22)
+
 // Simulation steps (global)
 vluint64_t tb_sstep;
 vluint64_t tb_time;
@@ -58,11 +60,22 @@ int main(int argc, char **argv, char **env)
     tb_time = 0;  // Simulation time in ps (64 bits)
 
     // Load the ROM file
-    vluint8_t ROM[(1<<22)];
-    FILE *f = fopen("Z88UK400.rom","rb");
-    size_t size = fread(ROM, 1, 131072, f);
-    fclose(f);
-    printf("Loaded %ld bytes from ROM.\n", size);
+    vluint8_t ROM[ROM_SIZE];
+    FILE *rom = fopen("Z88UK400.rom","rb");
+    if (rom == NULL) {
+      printf("Cannot open ROM file for reading.\n");
+      exit(-1);
+    }
+    size_t rom_size = fread(ROM, 1, ROM_SIZE, rom);
+    fclose(rom);
+    printf("Loaded %ld bytes from ROM file.\n", rom_size);
+    int rom_shift = 0;
+    while( (1 << rom_shift) < rom_size )
+      rom_shift++;
+    if ( (1 << rom_shift) != rom_size ) {
+      rom_size = 1 << rom_shift;
+      printf("ROM file packed into a %lu-bytes ROM.\n", rom_size);
+    }
 
     // Run simulation for NUM_CYCLES clock periods
     while (tb_sstep < NUM_STEPS)
@@ -76,7 +89,7 @@ int main(int argc, char **argv, char **env)
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
-          top->rom_di = ROM[top->rom_a & (131072-1)];
+          top->rom_di = ROM[top->rom_a & (rom_size-1)];
         } else {
           top->rom_di = 0xFF;
         }
@@ -102,7 +115,7 @@ int main(int argc, char **argv, char **env)
 
         if ((tb_sstep & 4095) == 0)
         {
-            printf("\r%lld us", tb_time / 1000000 );
+            printf("\r%lu us", tb_time / 1000000 );
             fflush(stdout);
         }
 
