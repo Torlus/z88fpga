@@ -126,6 +126,10 @@ begin
       // IO register write
       case(z80_a[7:0])
         8'hB0: com <= z80_do;
+        8'hD0: sr0 <= z80_do;
+        8'hD1: sr1 <= z80_do;
+        8'hD2: sr2 <= z80_do;
+        8'hD3: sr3 <= z80_do;
         default: ;
       endcase
     end else if (!z80_iorq_n & !z80_rd_n) begin
