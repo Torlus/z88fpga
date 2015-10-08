@@ -57,6 +57,10 @@ wire    [21:0]  z80_a_full;
 wire            z80_romsel;
 wire            z80_ramsel;
 
+
+
+reg     [7:0]   ioport_do;
+
 // Z80 instance
 tv80s z80 (
   .m1_n(z80_m1_n),
@@ -113,7 +117,8 @@ assign rom_oe_n = (!z80_mreq_n & !z80_rd_n) ? 1'b0 : 1'b1;
 assign rom_ce_n = (!z80_mreq_n & z80_romsel) ? 1'b0 : 1'b1;
 
 assign z80_di =
-  z80_romsel ? rom_di
+  !z80_iorq_n ? ioport_do
+  : z80_romsel ? rom_di
   : z80_ramsel ? ram_di
   : 8'b11111111;
 
@@ -134,6 +139,13 @@ begin
       endcase
     end else if (!z80_iorq_n & !z80_rd_n) begin
       // IO register read
+      case(z80_a[7:0])
+        8'hD0: ioport_do <= sr0;
+        8'hD1: ioport_do <= sr1;
+        8'hD2: ioport_do <= sr2;
+        8'hD3: ioport_do <= sr3;
+        default: ;
+      endcase
     end
   end
 end
