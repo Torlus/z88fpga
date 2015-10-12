@@ -77,8 +77,8 @@ assign kbcol[5] = z80_a[13] ? kbmat[47:40] : 8'b00000000;
 assign kbcol[6] = z80_a[14] ? kbmat[55:48] : 8'b00000000;
 assign kbcol[7] = z80_a[15] ? kbmat[63:56] : 8'b00000000;
 
-assign kb = kbcol[0] & kbcol[1] & kbcol[2] & kbcol[3]
-  & kbcol[4] & kbcol[5] & kbcol[6] & kbcol[7];
+assign kb = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
+  & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
 
 // Z80 instance
 tv80s z80 (
