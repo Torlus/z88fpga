@@ -65,6 +65,20 @@ wire            z80_ramsel;
 reg     [7:0]   ioport_do;
 
 reg     [63:0]  kbmat;
+wire    [7:0]   kbcol[0:7];
+wire    [7:0]   kb;
+
+assign kbcol[0] = z80_a[ 8] ? kbmat[ 7: 0] : 8'b00000000;
+assign kbcol[1] = z80_a[ 9] ? kbmat[15: 8] : 8'b00000000;
+assign kbcol[2] = z80_a[10] ? kbmat[23:16] : 8'b00000000;
+assign kbcol[3] = z80_a[11] ? kbmat[31:24] : 8'b00000000;
+assign kbcol[4] = z80_a[12] ? kbmat[39:32] : 8'b00000000;
+assign kbcol[5] = z80_a[13] ? kbmat[47:40] : 8'b00000000;
+assign kbcol[6] = z80_a[14] ? kbmat[55:48] : 8'b00000000;
+assign kbcol[7] = z80_a[15] ? kbmat[63:56] : 8'b00000000;
+
+assign kb = kbcol[0] & kbcol[1] & kbcol[2] & kbcol[3]
+  & kbcol[4] & kbcol[5] & kbcol[6] & kbcol[7];
 
 // Z80 instance
 tv80s z80 (
