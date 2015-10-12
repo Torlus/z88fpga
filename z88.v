@@ -5,6 +5,7 @@ module z88 (
 
   // Inputs
   clk, reset_n,
+  ps2clk, ps2dat,
   ram_di,
   rom_di
 );
@@ -12,6 +13,10 @@ module z88 (
 // Clock and Reset
 input           clk;
 input           reset_n;
+
+// PS/2
+input           ps2clk;
+input           ps2dat;
 
 // RAM
 output  [18:0]  ram_a;
@@ -57,9 +62,9 @@ wire    [21:0]  z80_a_full;
 wire            z80_romsel;
 wire            z80_ramsel;
 
-
-
 reg     [7:0]   ioport_do;
+
+reg     [63:0]  kbmat;
 
 // Z80 instance
 tv80s z80 (
@@ -80,6 +85,14 @@ tv80s z80 (
   .nmi_n(z80_nmi_n),
   .busrq_n(z80_busrq_n),
   .di(z80_di)
+);
+
+// PS/2 keyboard
+ps2 ps2kb (
+  .reset_n(reset_n),
+  .ps2clk(ps2clk),
+  .ps2dat(ps2dat),
+  .kbmat_out(kbmat)
 );
 
 assign z80_reset_n = reset_n;

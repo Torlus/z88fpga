@@ -56,6 +56,9 @@ int main(int argc, char **argv, char **env)
     top->ram_di = 0;
     top->rom_di = 0;
 
+    top->ps2clk = 1;
+    top->ps2dat = 1;
+
     tb_sstep = 0;  // Simulation steps (64 bits)
     tb_time = 0;  // Simulation time in ps (64 bits)
 
