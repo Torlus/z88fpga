@@ -66,7 +66,7 @@ reg     [7:0]   ioport_do;
 
 reg     [63:0]  kbmat;
 wire    [7:0]   kbcol[0:7];
-wire    [7:0]   kb;
+wire    [7:0]   kbd;
 
 assign kbcol[0] = z80_a[ 8] ? kbmat[ 7: 0] : 8'b00000000;
 assign kbcol[1] = z80_a[ 9] ? kbmat[15: 8] : 8'b00000000;
@@ -77,7 +77,7 @@ assign kbcol[5] = z80_a[13] ? kbmat[47:40] : 8'b00000000;
 assign kbcol[6] = z80_a[14] ? kbmat[55:48] : 8'b00000000;
 assign kbcol[7] = z80_a[15] ? kbmat[63:56] : 8'b00000000;
 
-assign kb = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
+assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
   & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
 
 // Z80 instance
@@ -167,6 +167,7 @@ begin
     end else if (!z80_iorq_n & !z80_rd_n) begin
       // IO register read
       case(z80_a[7:0])
+        8'hB2: ioport_do <= kbd;
         8'hD0: ioport_do <= sr0;
         8'hD1: ioport_do <= sr1;
         8'hD2: ioport_do <= sr2;

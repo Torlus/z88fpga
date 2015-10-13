@@ -77,11 +77,11 @@ begin
     //  A9 column
     8'h43: kbmat[8]  <= ~extkey & ~rlskey;   // I
     8'h3C: kbmat[9]  <= ~extkey & ~rlskey;   // U
-    // /!\ 8'h66: kbmat[10] <= ~extkey & ~rlskey;   // B
-    // /!\ 8'h66: kbmat[11] <= ~extkey & ~rlskey;   // G
-    // /!\ 8'h66: kbmat[12] <= ~extkey & ~rlskey;   // T
-    // /!\ 8'h66: kbmat[13] <= ~extkey & ~rlskey;   // 5
-    8'h75: kbmat[14] <=  extkey & ~rlskey;   // Up /!\
+    8'h32: kbmat[10] <= ~extkey & ~rlskey;   // B
+    8'h34: kbmat[11] <= ~extkey & ~rlskey;   // G
+    8'h2C: kbmat[12] <= ~extkey & ~rlskey;   // T
+    8'h2E: kbmat[13] <= ~extkey & ~rlskey;   // 5
+    8'h75: kbmat[14] <=  extkey & ~rlskey;   // Up
     8'h5D: kbmat[15] <= ~extkey & ~rlskey;   // \
     //  A10 column
     8'h44: kbmat[16] <= ~extkey & ~rlskey;  // O
@@ -90,7 +90,7 @@ begin
     8'h2B: kbmat[19] <= ~extkey & ~rlskey;  // F
     8'h2D: kbmat[20] <= ~extkey & ~rlskey;  // R
     8'h25: kbmat[21] <= ~extkey & ~rlskey;  // 4
-    8'h72: kbmat[22] <=  extkey & ~rlskey;  // Down /!\
+    8'h72: kbmat[22] <=  extkey & ~rlskey;  // Down
     8'h55: kbmat[23] <= ~extkey & ~rlskey;  // =
     //  A11 column
     8'h46: kbmat[24] <= ~extkey & ~rlskey;  // 9
@@ -99,7 +99,7 @@ begin
     8'h23: kbmat[27] <= ~extkey & ~rlskey;  // D
     8'h24: kbmat[28] <= ~extkey & ~rlskey;  // E
     8'h26: kbmat[29] <= ~extkey & ~rlskey;  // 3
-    8'h74: kbmat[30] <=  extkey & ~rlskey;  // Right /!\
+    8'h74: kbmat[30] <=  extkey & ~rlskey;  // Right
     8'h4E: kbmat[31] <= ~extkey & ~rlskey;  // -
     //  A12 column
     8'h4D: kbmat[32] <= ~extkey & ~rlskey;  // P
@@ -108,7 +108,7 @@ begin
     8'h1B: kbmat[35] <= ~extkey & ~rlskey;  // S
     8'h1D: kbmat[36] <= ~extkey & ~rlskey;  // W
     8'h1E: kbmat[37] <= ~extkey & ~rlskey;  // 2
-    8'h6B: kbmat[38] <=  extkey & ~rlskey;  // Left /!\
+    8'h6B: kbmat[38] <=  extkey & ~rlskey;  // Left
     8'h5B: kbmat[39] <= ~extkey & ~rlskey;  // ]
     //  A13 column
     8'h45: kbmat[40] <= ~extkey & ~rlskey;  // 0
@@ -124,7 +124,7 @@ begin
     8'h4C: kbmat[49] <= ~extkey & ~rlskey;  // ;
     8'h41: kbmat[50] <= ~extkey & ~rlskey;  // ,
     8'h04: kbmat[51] <= ~extkey & ~rlskey;  // Menu (F3)
-    8'h14: kbmat[52] <=           ~rlskey;  // <> (Ctrl) /!\
+    8'h14: kbmat[52] <=           ~rlskey;  // <> (Ctrl)
     8'h0D: kbmat[53] <= ~extkey & ~rlskey;  // Tab
     8'h12: kbmat[54] <= ~extkey & ~rlskey;  // LShift
     8'h05: kbmat[55] <= ~extkey & ~rlskey;  // Help (F1)
@@ -135,7 +135,7 @@ begin
     8'h58: kbmat[59] <= ~extkey & ~rlskey;  // Caps
     8'h06: kbmat[60] <= ~extkey & ~rlskey;  // Index (F2)
     8'h76: kbmat[61] <= ~extkey & ~rlskey;  // Esc
-    8'h11: kbmat[62] <=           ~rlskey;  // [] (Alt)[ /!\
+    8'h11: kbmat[62] <=           ~rlskey;  // [] (Alt)
     8'h59: kbmat[63] <= ~extkey & ~rlskey;  // RShift
     default: ;
   endcase
