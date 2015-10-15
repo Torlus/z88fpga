@@ -58,9 +58,9 @@ reg     [7:0]   sr1;
 reg     [7:0]   sr2;
 reg     [7:0]   sr3;
 
-wire    [21:0]  z80_a_full;
-wire            z80_romsel;
-wire            z80_ramsel;
+wire    [21:0]  bl_a;
+wire            bl_ipce;
+wire            bl_irce;
 
 reg     [7:0]   ioport_do;
 
@@ -116,7 +116,7 @@ assign z80_int_n = 1'b1;
 assign z80_nmi_n = 1'b1;
 assign z80_busrq_n = 1'b1;
 
-assign z80_a_full =
+assign bl_a =
   (z80_a[15:14] == 2'b11) ? { sr3, z80_a[13:0] }
   :  (z80_a[15:14] == 2'b10) ? { sr2, z80_a[13:0] }
   :  (z80_a[15:14] == 2'b01) ? { sr1, z80_a[13:0] }
@@ -126,27 +126,27 @@ assign z80_a_full =
     : { 8'b00010000, 1'b0, z80_a[12:0] }
   : 22'b11_1111_1111_1111_1111_1111;
 
-assign z80_romsel =
-  (z80_a_full[21:19] == 3'b000) ? 1'b1 : 1'b0;
+assign bl_ipce =
+  (bl_a[21:19] == 3'b000) ? 1'b1 : 1'b0;
 
-assign z80_ramsel =
-  (z80_a_full[21:19] == 3'b001) ? 1'b1 : 1'b0;
+assign bl_irce =
+  (bl_a[21:19] == 3'b001) ? 1'b1 : 1'b0;
 
 
-assign ram_a = z80_a_full[18:0];
+assign ram_a = bl_a[18:0];
 assign ram_do = z80_do;
 assign ram_we_n = (!z80_mreq_n & !z80_wr_n) ? 1'b0 : 1'b1;
 assign ram_oe_n = (!z80_mreq_n & !z80_rd_n) ? 1'b0 : 1'b1;
-assign ram_ce_n = (!z80_mreq_n & z80_ramsel) ? 1'b0 : 1'b1;
+assign ram_ce_n = (!z80_mreq_n & bl_irce) ? 1'b0 : 1'b1;
 
-assign rom_a = z80_a_full[18:0];
+assign rom_a = bl_a[18:0];
 assign rom_oe_n = (!z80_mreq_n & !z80_rd_n) ? 1'b0 : 1'b1;
-assign rom_ce_n = (!z80_mreq_n & z80_romsel) ? 1'b0 : 1'b1;
+assign rom_ce_n = (!z80_mreq_n & bl_ipce) ? 1'b0 : 1'b1;
 
 assign z80_di =
   !z80_iorq_n ? ioport_do
-  : z80_romsel ? rom_di
-  : z80_ramsel ? ram_di
+  : bl_ipce ? rom_di
+  : bl_irce ? ram_di
   : 8'b11111111;
 
 always @(posedge clk)
