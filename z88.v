@@ -80,6 +80,12 @@ assign kbcol[7] = z80_a[15] ? kbmat[63:56] : 8'b00000000;
 assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
   & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
 
+reg     [12:0]  pb0;  // Lores0 (RAM, 64 char, 512B)
+reg     [9:0]   pb1;  // Lores1 (ROM, 448 char, 3.5K)
+reg     [8:0]   pb2;  // Hires0 (RAM, 768 char, 6K)
+reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
+reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
+
 // Z80 instance
 tv80s z80 (
   .m1_n(z80_m1_n),
@@ -157,6 +163,11 @@ begin
     if (!z80_iorq_n & !z80_wr_n) begin
       // IO register write
       case(z80_a[7:0])
+        8'h70: pb0 <= {z80_a[12:8], z80_do};
+        8'h71: pb1 <= {z80_a[9:8], z80_do};
+        8'h72: pb2 <= {z80_a[8], z80_do};
+        8'h73: pb3 <= {z80_a[10:8], z80_do};
+        8'h74: sbr <= {z80_a[10:8], z80_do};
         8'hB0: com <= z80_do;
         8'hD0: sr0 <= z80_do;
         8'hD1: sr1 <= z80_do;
