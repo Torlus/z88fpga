@@ -53,8 +53,8 @@ int main(int argc, char **argv, char **env)
     top->reset_n = 0;
     top->clk = 1;
 
-    top->ram_di = 0;
-    top->rom_di = 0;
+    top->ram_do = 0;
+    top->rom_do = 0;
 
     top->ps2clk = 1;
     top->ps2dat = 1;
@@ -92,9 +92,9 @@ int main(int argc, char **argv, char **env)
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
-          top->rom_di = ROM[top->rom_a & (rom_size-1)];
+          top->rom_do = ROM[top->rom_a & (rom_size-1)];
         } else {
-          top->rom_di = 0xFF;
+          top->rom_do = 0xFF;
         }
 
 #if VM_TRACE

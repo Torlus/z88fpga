@@ -32,6 +32,9 @@ input   [7:0]   rom_do;
 output          rom_ce_n;
 output          rom_oe_n;
 
+// Z80
+wire    [7:0]   z80_do;
+
 // Z88 PCB glue
 wire            z88_mck;      // master clock
 wire            z88_sck;      // standby clock
@@ -55,7 +58,7 @@ wire            z88_se1_n;
 wire            z88_se2_n;
 wire            z88_se3_n;
 wire            z88_roe_n;
-wire            z88_we_n;
+wire            z88_wrb_n;
 wire            z88_rin_n;
 wire            z88_rout_n;
 wire    [63:0]  z88_kbmat;
@@ -74,13 +77,13 @@ tv80s z80 (
   .halt_n(z88_halt_n),
   .busak_n(),               // not wired
   .A(z88_ca),
-  .dout(z88_cdi),
+  .dout(z80_do),
   .reset_n(z88_rout_n),
   .clk(z88_pm1),
-  .wait_n(),                // not wired
+  .wait_n(1'b1),                // not wired
   .int_n(z88_int_n),
   .nmi_n(z88_nmi_n),
-  .busrq_n(),               // not wired
+  .busrq_n(1'b1),               // not wired
   .di(z88_cdo)
 );
 
@@ -105,7 +108,7 @@ blink theblink (
   .mrq_n(z88_mreq_n),
   .cm1_n(z88_m1_n),
   .crd_n(z88_rd_n),
-  .wrb_n(z88_we_n),
+  .wrb_n(z88_wrb_n),
   .roe_n(z88_roe_n),
   .ipce_n(z88_ipce_n),
   .irce_n(z88_irce_n),
@@ -117,17 +120,21 @@ blink theblink (
 
 // Internal RAM (Slot 0)
 assign ram_a = z88_ma[18:0];
-assign ram_do = z88_cdi;
 assign ram_di = z88_cdo;
-assign ram_we_n = z88_we_n;
+assign ram_we_n = z88_wrb_n;
 assign ram_oe_n = z88_roe_n;
 assign ram_ce_n = z88_irce_n;
 
 // Internal ROM (Slot 0)
 assign rom_a = z88_ma[18:0];
-assign rom_do = z88_cdi;
 assign rom_oe_n = z88_roe_n;
 assign rom_ce_n = z88_ipce_n;
+
+assign z88_cdi = (!z88_ipce_n & !z88_roe_n) ? rom_do
+                : (!z88_irce_n & !z88_roe_n) ? ram_do
+                : (!z88_iorq_n & z88_rd_n) ? z80_do
+                : (!z88_mreq_n & z88_rd_n) ? z80_do
+                : 8'b11111111;
 
 // PS/2 keyboard
 ps2 ps2kb (
@@ -136,6 +143,5 @@ ps2 ps2kb (
   .ps2dat(ps2dat),
   .kbmat_out(z88_kbmat)
 );
-
 
 endmodule
