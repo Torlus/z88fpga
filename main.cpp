@@ -18,6 +18,7 @@
 #define STEP_PS      ((vluint64_t)15000)
 
 #define ROM_SIZE      (1<<22)
+#define RAM_SIZE      (1<<19)
 
 // Simulation steps (global)
 vluint64_t tb_sstep;
@@ -80,6 +81,9 @@ int main(int argc, char **argv, char **env)
       printf("ROM file packed into a %lu-bytes ROM.\n", rom_size);
     }
 
+    // RAM
+    vluint8_t RAM[RAM_SIZE];
+
     // Run simulation for NUM_CYCLES clock periods
     while (tb_sstep < NUM_STEPS)
     {
@@ -96,6 +100,17 @@ int main(int argc, char **argv, char **env)
         } else {
           top->rom_do = 0xFF;
         }
+
+        // Simulate RAM behaviour
+        if (!top->ram_oe_n && !top->ram_ce_n) {
+          top->ram_do = ROM[top->ram_a & (RAM_SIZE-1)];
+        } else {
+          top->ram_do = 0xFF;
+        }
+        if (!top->ram_we_n && !top->ram_ce_n) {
+          RAM[top->ram_a & (RAM_SIZE-1)] = top->ram_di;
+        }
+
 
 #if VM_TRACE
         // Dump signals into VCD file
