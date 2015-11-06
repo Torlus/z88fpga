@@ -90,6 +90,8 @@ tv80s z80 (
 assign z88_int_n = 1'b1;
 assign z88_nmi_n = 1'b1;
 
+assign z88_reset_n = reset_n;
+
 // Blink instance
 blink theblink (
   .rout_n(z88_rout_n),
