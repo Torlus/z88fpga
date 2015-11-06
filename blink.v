@@ -118,6 +118,8 @@ begin
         8'h73: pb3 <= {ca[10:8], cdi};
         8'h74: sbr <= {ca[10:8], cdi};
         8'hB0: com <= cdi;
+        8'hB1: itt <= cdi;
+        8'hB6: ack <= cdi;
         8'hD0: sr0 <= cdi;
         8'hD1: sr1 <= cdi;
         8'hD2: sr2 <= cdi;
@@ -127,6 +129,7 @@ begin
     end else if (!ior_n & !crd_n) begin
       // IO register read
       case(ca[7:0])
+        8'hB1: r_cdo <= sta;
         8'hB2: r_cdo <= kbd;
         8'hD0: r_cdo <= sr0;
         8'hD1: r_cdo <= sr1;
@@ -162,5 +165,9 @@ reg     [8:0]   pb2;  // Hires0 (RAM, 768 char, 6K)
 reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
 reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 
+// Interrupts
+reg     [7:0]   itt;  // Interrupt control (WR)
+reg     [7:0]   ack;  // Interrupt acknoledge (WR)
+reg     [7:0]   sta;  // Interrupt status (RD)
 
 endmodule
