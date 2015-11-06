@@ -15,9 +15,13 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)205000)
-// Half period (in ps) of a 33.333 MHz clock
-#define STEP_PS      ((vluint64_t)15000)
+#define NUM_STEPS    ((vluint64_t)( (491520 * 2) + 10 ))
+// Half period (in ps) of a 9.8304 MHz clock
+#define STEP_PS      ((vluint64_t)5086)
+// 5ms clock period = 2,500,000,000 ps
+// So we will toggle the clock every 2,500,000,000 / 5086 = 491520 ticks
+// of the MCLK
+#define CLK5MS_TICKS ((vluint64_t)491520)
 
 #define ROM_SIZE      (1<<22)
 #define RAM_SIZE      (1<<19)
@@ -25,6 +29,7 @@
 // Simulation steps (global)
 vluint64_t tb_sstep;
 vluint64_t tb_time;
+vluint64_t clk5ms_ticks;
 
 Vz88* top;
 vluint8_t ROM[ROM_SIZE];
@@ -73,6 +78,7 @@ int main(int argc, char **argv, char **env)
     // Initialize simulation inputs
     top->reset_n = 0;
     top->clk = 1;
+    top->clk5ms = 1;
 
     top->ram_do = 0;
     top->rom_do = 0;
@@ -82,6 +88,8 @@ int main(int argc, char **argv, char **env)
 
     tb_sstep = 0;  // Simulation steps (64 bits)
     tb_time = 0;  // Simulation time in ps (64 bits)
+
+    clk5ms_ticks = 0;
 
     // Load the ROM file
     FILE *rom = fopen("Z88UK400.rom","rb");
@@ -113,6 +121,11 @@ int main(int argc, char **argv, char **env)
         top->reset_n = (tb_sstep < (vluint64_t)24) ? 0 : 1;
         // Toggle clock
         top->clk = top->clk ^ 1;
+        // Generate the 5ms clock
+        if (++clk5ms_ticks == CLK5MS_TICKS) {
+          top->clk5ms ^= 1;
+          clk5ms_ticks = 0;
+        }
         // Evaluate verilated model
         top->eval();
 

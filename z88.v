@@ -4,14 +4,15 @@ module z88 (
   rom_a, rom_ce_n, rom_oe_n,
 
   // Inputs
-  clk, reset_n,
+  clk, reset_n, clk5ms,
   ps2clk, ps2dat,
   ram_di,
   rom_do
 );
 
-// Clock and Reset
+// Clocks and Reset
 input           clk;
+input           clk5ms;
 input           reset_n;
 
 // PS/2
