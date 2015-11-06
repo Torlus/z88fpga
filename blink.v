@@ -76,9 +76,11 @@ assign pm1 = mck;
 // General
 reg     [7:0]   r_cdo;
 
-// Bank switching
+// Common control register
 reg     [7:0]   com;      // IO $B0
 `define RAMS 2
+
+// Bank switching (WR only)
 reg     [7:0]   sr0;
 reg     [7:0]   sr1;
 reg     [7:0]   sr2;
@@ -118,7 +120,9 @@ begin
         8'h73: pb3 <= {ca[10:8], cdi};
         8'h74: sbr <= {ca[10:8], cdi};
         8'hB0: com <= cdi;
-        8'hB1: itt <= cdi;
+        8'hB1: int1 <= cdi;
+        8'hB4: tack <= cdi[2:0];
+        8'hB5: tmk <= cdi[2:0];
         8'hB6: ack <= cdi;
         8'hD0: sr0 <= cdi;
         8'hD1: sr1 <= cdi;
@@ -131,10 +135,12 @@ begin
       case(ca[7:0])
         8'hB1: r_cdo <= sta;
         8'hB2: r_cdo <= kbd;
-        8'hD0: r_cdo <= sr0;
-        8'hD1: r_cdo <= sr1;
-        8'hD2: r_cdo <= sr2;
-        8'hD3: r_cdo <= sr3;
+        8'hB5: r_cdo <= {5'b00000, tsta};
+        8'hD0: r_cdo <= tim0;
+        8'hD1: r_cdo <= {2'b00, tim1};
+        8'hD2: r_cdo <= tim2;
+        8'hD3: r_cdo <= tim3;
+        8'hD4: r_cdo <= {3'b000, tim4};
         default: ;
       endcase
     end
@@ -158,7 +164,7 @@ assign kbcol[7] = ca[15] ? kbmat[63:56] : 8'b00000000;
 assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
   & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
 
-// Display
+// Display (WR only)
 reg     [12:0]  pb0;  // Lores0 (RAM, 64 char, 512B)
 reg     [9:0]   pb1;  // Lores1 (ROM, 448 char, 3.5K)
 reg     [8:0]   pb2;  // Hires0 (RAM, 768 char, 6K)
@@ -166,8 +172,18 @@ reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
 reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 
 // Interrupts
-reg     [7:0]   itt;  // Interrupt control (WR)
+reg     [7:0]   int1;  // Interrupt control (WR)
 reg     [7:0]   ack;  // Interrupt acknoledge (WR)
 reg     [7:0]   sta;  // Interrupt status (RD)
+
+// Real Time Clock (RD)
+reg     [7:0]   tim0; // 5ms ticks (0-199)
+reg     [5:0]   tim1; // seconds (0-59)
+reg     [7:0]   tim2; // minutes (0-255)
+reg     [7:0]   tim3; // 256 minutes (0-255)
+reg     [4:0]   tim4; // 64K minutes (0-31)
+reg     [2:0]   tack; // Timer interrupt acknoledge (WR)
+reg     [2:0]   tsta; // Timer interrupt status (RD)
+reg     [2:0]   tmk;  // Timer interrupt mask (WR)
 
 endmodule
