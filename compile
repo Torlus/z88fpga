@@ -11,10 +11,8 @@ TOP_FILE=z88
 
 #C++ support files
 CPP_FILES=\
-"main.cpp"
-#"main.cpp\
-# dpi_trace.cpp\
-# musashi.cpp"
+"main.cpp\
+ z80ex_dasm.cpp"
 
 verilator $TOP_FILE.v $COMPILE_OPT $TRACE_OPT -top-module $TOP_FILE -exe $CPP_FILES
 cd ./obj_dir

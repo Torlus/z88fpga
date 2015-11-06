@@ -1,6 +1,8 @@
 #define DPI_DLLISPEC
 #define DPI_DLLESPEC
 
+#include "z80ex_dasm.h"
+
 #include "verilated.h"
 #include "svdpi.h"
 
@@ -24,6 +26,24 @@
 vluint64_t tb_sstep;
 vluint64_t tb_time;
 
+Vz88* top;
+vluint8_t ROM[ROM_SIZE];
+size_t rom_size;
+vluint8_t RAM[RAM_SIZE];
+
+// Disassembly
+FILE *logger;
+bool disas_rom, disas_ram;
+
+Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, void *user_data) {
+  if (disas_rom)
+    return ROM[addr & (rom_size-1)];
+  if (disas_ram)
+    return RAM[addr & (RAM_SIZE-1)];
+  fprintf(logger, "PC: Unexpected location %04X\n", addr);
+  return 0xFF;
+}
+
 int main(int argc, char **argv, char **env)
 {
     // Trace index
@@ -38,7 +58,7 @@ int main(int argc, char **argv, char **env)
 
     Verilated::commandArgs(argc, argv);
     // Init top verilog instance
-    Vz88* top = new Vz88;
+    top = new Vz88;
 
 #if VM_TRACE
     // Init VCD trace dump
@@ -64,13 +84,12 @@ int main(int argc, char **argv, char **env)
     tb_time = 0;  // Simulation time in ps (64 bits)
 
     // Load the ROM file
-    vluint8_t ROM[ROM_SIZE];
     FILE *rom = fopen("Z88UK400.rom","rb");
     if (rom == NULL) {
       printf("Cannot open ROM file for reading.\n");
       exit(-1);
     }
-    size_t rom_size = fread(ROM, 1, ROM_SIZE, rom);
+    rom_size = fread(ROM, 1, ROM_SIZE, rom);
     fclose(rom);
     printf("Loaded %ld bytes from ROM file.\n", rom_size);
     int rom_shift = 0;
@@ -81,8 +100,11 @@ int main(int argc, char **argv, char **env)
       printf("ROM file packed into a %lu-bytes ROM.\n", rom_size);
     }
 
-    // RAM
-    vluint8_t RAM[RAM_SIZE];
+    // For disassembly
+    logger = fopen("z88_dasm.log", "wb");
+    int m1_prev = 1;
+    char disas_out[256];
+    int t_states, t_states2;
 
     // Run simulation for NUM_CYCLES clock periods
     while (tb_sstep < NUM_STEPS)
@@ -94,8 +116,30 @@ int main(int argc, char **argv, char **env)
         // Evaluate verilated model
         top->eval();
 
+        // Disassembly
+        if (top->v__DOT__z88_m1_n && !m1_prev) {
+          vluint16_t regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
+          vluint16_t regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
+          vluint8_t regA = top->v__DOT__z80__DOT__i_tv80_core__DOT__ACC;
+          vluint8_t regI = top->v__DOT__z80__DOT__i_tv80_core__DOT__I;
+          vluint8_t regF = top->v__DOT__z80__DOT__i_tv80_core__DOT__F;
+          vluint8_t regB = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__B;
+          vluint8_t regC = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__C;
+          vluint8_t regD = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__D;
+          vluint8_t regE = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__E;
+          vluint8_t regH = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__H;
+          vluint8_t regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
+
+          fprintf(logger, "PC=%04X A=%02X B=%02X C=%02X D=%02X E=%02X H=%02X L=%02X\n",
+            regPC, regA, regB, regC, regD, regE, regH, regL);
+          z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
+          fprintf(logger, ">> %s\n\n", disas_out);
+        }
+        m1_prev = top->v__DOT__z88_m1_n;
+
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
+          disas_rom = true; disas_ram = false;
           top->rom_do = ROM[top->rom_a & (rom_size-1)];
         } else {
           top->rom_do = 0xFF;
@@ -103,6 +147,7 @@ int main(int argc, char **argv, char **env)
 
         // Simulate RAM behaviour
         if (!top->ram_oe_n && !top->ram_ce_n) {
+          disas_rom = false; disas_ram = true;
           top->ram_do = ROM[top->ram_a & (RAM_SIZE-1)];
         } else {
           top->ram_do = 0xFF;
@@ -140,6 +185,7 @@ int main(int argc, char **argv, char **env)
         if (Verilated::gotFinish()) break;
     }
     top->final();
+    fclose(logger);
 
 #if VM_TRACE
     if (tfp) tfp->close();
