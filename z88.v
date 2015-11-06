@@ -40,6 +40,7 @@ wire    [7:0]   z80_do;
 wire            z88_mck;      // master clock
 wire            z88_sck;      // standby clock
 wire            z88_pm1;      // Z80 clock
+wire            z88_clk5ms;   // external 5ms
 wire            z88_m1_n;
 wire            z88_mreq_n;
 wire            z88_iorq_n;
@@ -66,6 +67,7 @@ wire    [63:0]  z88_kbmat;
 
 // Clocks
 assign z88_mck = clk;
+assign z88_clk5ms = clk5ms;
 
 // Z80 instance
 tv80s z80 (
@@ -100,6 +102,7 @@ blink theblink (
   .mck(z88_mck),
   .sck(z88_sck),
   .pm1(z88_pm1),
+  .tick(z88_clk5ms),
   .cdi(z88_cdi),
   .cdo(z88_cdo),
   .ca(z88_ca),

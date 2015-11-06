@@ -3,13 +3,16 @@ module blink (
   rout_n, cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
   intb_n, nmib_n, roe_n,
   // Inputs
-  ca, crd_n, cdi, mck, sck, rin_n, hlt_n, mrq_n, ior_n, cm1_n, kbmat
+  ca, crd_n, cdi, mck, sck, rin_n, hlt_n, mrq_n, ior_n, cm1_n, kbmat,
+  // Extra
+  tick
   );
 
 // Clocks
 input           mck;      // 9.83MHz Master Clock
 input           sck;      // 25.6KHz Standby Clock
 output          pm1;      // Z80 clock driven by blink
+input           tick;     // 5ms tick
 
 // Reset
 input           rin_n;    // Reset button
@@ -138,9 +141,9 @@ begin
         8'hB5: r_cdo <= {5'b00000, tsta};
         8'hD0: r_cdo <= tim0;
         8'hD1: r_cdo <= {2'b00, tim1};
-        8'hD2: r_cdo <= tim2;
-        8'hD3: r_cdo <= tim3;
-        8'hD4: r_cdo <= {3'b000, tim4};
+        8'hD2: r_cdo <= timm[7:0];
+        8'hD3: r_cdo <= timm[15:8];
+        8'hD4: r_cdo <= {3'b000, timm[20:16]};
         default: ;
       endcase
     end
@@ -179,11 +182,22 @@ reg     [7:0]   sta;  // Interrupt status (RD)
 // Real Time Clock (RD)
 reg     [7:0]   tim0; // 5ms ticks (0-199)
 reg     [5:0]   tim1; // seconds (0-59)
-reg     [7:0]   tim2; // minutes (0-255)
-reg     [7:0]   tim3; // 256 minutes (0-255)
-reg     [4:0]   tim4; // 64K minutes (0-31)
+reg     [20:0]  timm; // minutes (0-2^21)
 reg     [2:0]   tack; // Timer interrupt acknoledge (WR)
 reg     [2:0]   tsta; // Timer interrupt status (RD)
 reg     [2:0]   tmk;  // Timer interrupt mask (WR)
+
+always @(posedge tick)
+begin
+  if (tim0 < 199) begin
+    tim0 <= tim0 + 1'b1;
+  end else if (tim0 >= 199) begin
+    tim0 <= 8'h00;
+    tim1 <= tim1 + 1'b1;
+  end else if (tim1 >= 59) begin
+    tim1 <= 6'h00;
+    timm <= timm + 1'b1;
+  end
+end
 
 endmodule
