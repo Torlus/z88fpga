@@ -81,10 +81,6 @@ reg     [7:0]   r_cdo;
 
 // Common control register
 reg     [7:0]   com;      // IO $B0
-localparam
-  com_lcdon   = 0,
-  com_rams    = 2,
-  com_restim  = 4;
 
 // Bank switching (WR only)
 reg     [7:0]   sr0;
@@ -98,7 +94,7 @@ assign ma =
   :  (ca[15:14] == 2'b01) ? { sr1, ca[13:0] }             // 4000-7FFF
   :  (ca[15:13] == 3'b001) ? { sr0, 1'b1, ca[12:0] }      // 2000-3FFF
   :  (ca[15:13] == 3'b000) ?                              // 0000-1FFF
-    (com[com_rams] == 1'b0) ?
+    (com[2] == 1'b0) ?
     { 8'b00000000, 1'b0, ca[12:0] }                       // Bank $00 !RAMS
     : { 8'b00010000, 1'b0, ca[12:0] }                     // Bank $20 RAMS
   : 22'b11_1111_1111_1111_1111_1111;
@@ -128,7 +124,7 @@ begin
         8'h74: sbr <= {ca[10:8], cdi};
         8'hB0: com <= cdi;
         8'hB1: int1 <= cdi;
-        8'hB4: tack <= cdi[2:0];
+        8'hB4: tsta <= tsta & ~cdi[2:0];
         8'hB5: tmk <= cdi[2:0];
         8'hB6: ack <= cdi;
         8'hD0: sr0 <= cdi;
@@ -180,33 +176,13 @@ reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 
 // Interrupts
 reg     [7:0]   int1; // Interrupt control (WR)
-localparam
-  int_gint    = 0,
-  int_time    = 1;
-
 reg     [7:0]   ack;  // Interrupt acknoledge (WR)
 reg     [7:0]   sta;  // Interrupt status (RD)
-localparam
-  sta_time    = 1;
 
 // Timer interrupts
-reg     [2:0]   tack; // Timer interrupt acknowledge (WR)
-localparam
-  tack_tick   = 0,
-  tack_sec    = 1,
-  tack_min    = 2;
-
+//reg     [2:0]   tack; // Timer interrupt acknowledge (WR)
 reg     [2:0]   tsta; // Timer interrupt status (RD)
-localparam
-  tsta_tick   = 0,
-  tsta_sec    = 1,
-  tsta_min    = 2;
-
 reg     [2:0]   tmk;  // Timer interrupt mask (WR)
-localparam
-  tmk_tick    = 0,
-  tmk_sec     = 1,
-  tmk_min     = 2;
 
 // Real Time Clock (RD)
 reg     [7:0]   tim0; // 5ms ticks (0-199)
@@ -215,20 +191,28 @@ reg     [20:0]  timm; // minutes (0-2^21)
 
 always @(posedge tick)
 begin
-  if (com[com_restim]) begin
-    com[com_restim] <= 1'b0;
+  if (com[4]) begin   // restim
+    com[4] <= 1'b0;
     tim0 <= 8'h00;
     tim1 <= 6'h00;
     timm <= 21'h00;
   end else begin
-    if (tim0 < 199) begin
+    if (tim0 != 199) begin    // 5ms tick
       tim0 <= tim0 + 1'b1;
-    end else if (tim0 >= 199) begin
+      tsta[0] <= tmk[0];
+      sta[1] <= int1[0] & int1[1] & tmk[0];
+    end else begin
+      if (tim1 != 59) begin   // second
       tim0 <= 8'h00;
       tim1 <= tim1 + 1'b1;
-    end else if (tim1 >= 59) begin
-      tim1 <= 6'h00;
-      timm <= timm + 1'b1;
+      tsta[1] <= tmk[1];
+      sta[1] <= int1[0] & int1[1] & tmk[1];
+      end else begin          // minute
+        tim1 <= 6'h00;
+        timm <= timm + 1'b1;
+        tsta[2] <= tmk[2];
+        sta[1] <= int1[0] & int1[1] & tmk[2];
+      end
     end
   end
 end
