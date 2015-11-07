@@ -126,7 +126,7 @@ begin
         8'hB1: int1 <= cdi;
         8'hB4: tsta <= tsta & ~cdi[2:0];
         8'hB5: tmk <= cdi[2:0];
-        8'hB6: ack <= cdi;
+        8'hB6: sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
         8'hD0: sr0 <= cdi;
         8'hD1: sr1 <= cdi;
         8'hD2: sr2 <= cdi;
@@ -175,8 +175,8 @@ reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
 reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 
 // Interrupts
+//reg     [7:0]   ack;  // Interrupt acknoledge (WR)
 reg     [7:0]   int1; // Interrupt control (WR)
-reg     [7:0]   ack;  // Interrupt acknoledge (WR)
 reg     [7:0]   sta;  // Interrupt status (RD)
 
 // Timer interrupts
