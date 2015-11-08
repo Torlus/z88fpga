@@ -116,9 +116,11 @@ begin
     intb <= 1'b0;
     iak <= 1'b0;
   end else if (mck == 1'b1) begin
+    intb <= intt;
     if (!ior_n & !cm1_n) begin
-      // Z80 has acknowledge int_n
+      // Z80 has acknowledged int_n
       intb <= 1'b0;
+      intt <= 1'b0;
     end else if (!ior_n & crd_n) begin
       // IO register write
       case(ca[7:0])
@@ -129,9 +131,9 @@ begin
         8'h74: sbr <= {ca[10:8], cdi};
         8'hB0: com <= cdi;
         8'hB1: int1 <= cdi;
-        8'hB4: tsta <= tsta & ~cdi[2:0];
+        8'hB4: tsta <= ttsta & ~cdi[2:0];
         8'hB5: tmk <= cdi[2:0];
-        8'hB6: sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
+        8'hB6: sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10} | {6'b000000, intt, 1'b};
         8'hD0: sr0 <= cdi;
         8'hD1: sr1 <= cdi;
         8'hD2: sr2 <= cdi;
@@ -191,12 +193,15 @@ reg     [7:0]   int1; // Interrupt control (WR)
 reg     [7:0]   sta;  // Interrupt status (RD)
 reg             iak;  // auto ack int/sta flag
 reg             intb; // Int flag
+
 assign intb_n = ~intb;
 
 // Timer interrupts
 //reg     [2:0]   tack; // Timer interrupt acknowledge (WR)
 reg     [2:0]   tsta; // Timer interrupt status (RD)
 reg     [2:0]   tmk;  // Timer interrupt mask (WR)
+reg             intt; // Timer interrupt flag
+reg     [2:0]   ttsta;  // Timer interrupt status flags
 
 // Real Time Clock (RD)
 reg     [7:0]   tim0; // 5ms ticks (0-199)
@@ -206,29 +211,26 @@ reg     [20:0]  timm; // minutes (0-2^21)
 always @(posedge tick)
 begin
   if (com[4]) begin   // restim
-    com[4] <= 1'b0;
     tim0 <= 8'h00;
     tim1 <= 6'h00;
     timm <= 21'h00;
+    ttsta <= 3'b000;
   end else begin
     if (tim0 != 199) begin    // 5ms tick
       tim0 <= tim0 + 1'b1;
-      tsta[0] <= tmk[0];
-      sta[1] <= int1[0] & int1[1] & tmk[0];
-      intb <= int1[0] & int1[1] & tmk[0];
+      ttsta <= 3'b001;
+      intt <= int1[0] & int1[1] & tmk[0];
     end else begin
       if (tim1 != 59) begin   // second
       tim0 <= 8'h00;
       tim1 <= tim1 + 1'b1;
-      tsta[1] <= tmk[1];
-      sta[1] <= int1[0] & int1[1] & tmk[1];
-      intb <= int1[0] & int1[1] & tmk[1];
+      ttsta <= 3'b011;
+      intt <= int1[0] & int1[1] & tmk[1];
       end else begin          // minute
         tim1 <= 6'h00;
         timm <= timm + 1'b1;
-        tsta[2] <= tmk[2];
-        sta[1] <= int1[0] & int1[1] & tmk[2];
-        intb <= int1[0] & int1[1] & tmk[2];        
+        ttsta <= 3'b111;
+        intt <= int1[0] & int1[1] & tmk[2];
       end
     end
   end
