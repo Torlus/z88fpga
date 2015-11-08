@@ -74,7 +74,7 @@ input           kbmat;
 assign rout_n = rin_n;
 
 // Clocks
-assign pm1 = mck;
+assign pm1 = (hlt_n || !intb_n) ? mck : 1'b0; // Halt stops CPU, Int low restarts.
 
 // General
 reg     [7:0]   r_cdo;
@@ -96,7 +96,7 @@ assign ma =
   :  (ca[15:13] == 3'b000) ?                              // 0000-1FFF
     (com[2] == 1'b0) ?
     { 8'b00000000, 1'b0, ca[12:0] }                       // Bank $00 !RAMS
-    : { 8'b00010000, 1'b0, ca[12:0] }                     // Bank $20 RAMS
+    : { 8'b00100000, 1'b0, ca[12:0] }                     // Bank $20 RAMS
   : 22'b11_1111_1111_1111_1111_1111;
 
 assign ipce_n =
@@ -113,8 +113,13 @@ always @(posedge mck)
 begin
   if (rin_n == 1'b0) begin
     com <= 8'b00000000;
+    intb <= 1'b0;
+    iak <= 1'b0;
   end else if (mck == 1'b1) begin
-    if (!ior_n & crd_n) begin
+    if (!ior_n & !cm1_n) begin
+      // Z80 has acknowledge int_n
+      intb <= 1'b0;
+    end else if (!ior_n & crd_n) begin
       // IO register write
       case(ca[7:0])
         8'h70: pb0 <= {ca[12:8], cdi};
@@ -136,7 +141,10 @@ begin
     end else if (!ior_n & !crd_n) begin
       // IO register read
       case(ca[7:0])
-        8'hB1: r_cdo <= sta;
+        8'hB1: begin
+          r_cdo <= sta;
+          iak <= 1'b1;
+          end
         8'hB2: r_cdo <= kbd;
         8'hB5: r_cdo <= {5'b00000, tsta};
         8'hD0: r_cdo <= tim0;
@@ -146,6 +154,9 @@ begin
         8'hD4: r_cdo <= {3'b000, timm[20:16]};
         default: ;
       endcase
+    end else if (iak) begin
+      sta <= sta & 8'b01101101; // ack. KWait, UART, Time int.
+      iak <= 1'b0;              // int. ack. done.
     end
   end
 end
@@ -178,6 +189,9 @@ reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 //reg     [7:0]   ack;  // Interrupt acknoledge (WR)
 reg     [7:0]   int1; // Interrupt control (WR)
 reg     [7:0]   sta;  // Interrupt status (RD)
+reg             iak;  // auto ack int/sta flag
+reg             intb; // Int flag
+assign intb_n = ~intb;
 
 // Timer interrupts
 //reg     [2:0]   tack; // Timer interrupt acknowledge (WR)
@@ -201,17 +215,20 @@ begin
       tim0 <= tim0 + 1'b1;
       tsta[0] <= tmk[0];
       sta[1] <= int1[0] & int1[1] & tmk[0];
+      intb <= int1[0] & int1[1] & tmk[0];
     end else begin
       if (tim1 != 59) begin   // second
       tim0 <= 8'h00;
       tim1 <= tim1 + 1'b1;
       tsta[1] <= tmk[1];
       sta[1] <= int1[0] & int1[1] & tmk[1];
+      intb <= int1[0] & int1[1] & tmk[1];
       end else begin          // minute
         tim1 <= 6'h00;
         timm <= timm + 1'b1;
         tsta[2] <= tmk[2];
         sta[1] <= int1[0] & int1[1] & tmk[2];
+        intb <= int1[0] & int1[1] & tmk[2];        
       end
     end
   end

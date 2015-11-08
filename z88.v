@@ -90,7 +90,6 @@ tv80s z80 (
   .di(z88_cdo)
 );
 
-assign z88_int_n = 1'b1;
 assign z88_nmi_n = 1'b1;
 
 assign z88_reset_n = reset_n;

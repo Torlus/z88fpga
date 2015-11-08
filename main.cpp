@@ -21,7 +21,8 @@
 // 5ms clock period = 2,500,000,000 ps
 // So we will toggle the clock every 2,500,000,000 / 5086 = 491520 ticks
 // of the MCLK
-#define CLK5MS_TICKS ((vluint64_t)491520)
+// (divided by 10 for debugging = 0.5ms)
+#define CLK5MS_TICKS ((vluint64_t)49152)
 
 #define ROM_SIZE      (1<<22)
 #define RAM_SIZE      (1<<19)
