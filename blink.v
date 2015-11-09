@@ -186,7 +186,13 @@ begin
             pm1s <= 1'b1;
           end else begin
             if  (!hlt_n) begin
-              pm1s <= 1'b0;
+              if (ca[15:8] != 8'h3F) begin
+                pm1s <= 1'b0;
+              end else begin
+                pm1s <= 1'b0;
+                // Register I is copied on A15-8 during Halt : $3F
+                // Coma : switch off mck and use sck
+              end
             end else begin
               if (!ior_n & crd_n) begin
                 // IO register write
