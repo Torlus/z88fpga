@@ -3,16 +3,13 @@ module blink (
   rout_n, cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
   intb_n, nmib_n, roe_n,
   // Inputs
-  ca, crd_n, cdi, mck, sck, rin_n, hlt_n, mrq_n, ior_n, cm1_n, kbmat,
-  // Extra
-  tick
+  ca, crd_n, cdi, mck, sck, rin_n, hlt_n, mrq_n, ior_n, cm1_n, kbmat
   );
 
 // Clocks
 input           mck;      // 9.83MHz Master Clock
 input           sck;      // 25.6KHz Standby Clock
 output          pm1;      // Z80 clock driven by blink
-input           tick;     // 5ms tick
 
 // Reset
 input           rin_n;    // Reset button
@@ -77,6 +74,7 @@ assign rout_n = rin_n;
 assign pm1 = (hlt_n || !intb_n) ? mck : 1'b0; // Halt stops CPU, Int low restarts.
 
 // General
+reg     [15:0]  tck;
 reg     [7:0]   r_cdo;
 
 // Common control register
@@ -88,6 +86,33 @@ reg     [7:0]   sr1;
 reg     [7:0]   sr2;
 reg     [7:0]   sr3;
 
+// Display (WR only)
+reg     [12:0]  pb0;  // Lores0 (RAM, 64 char, 512B)
+reg     [9:0]   pb1;  // Lores1 (ROM, 448 char, 3.5K)
+reg     [8:0]   pb2;  // Hires0 (RAM, 768 char, 6K)
+reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
+reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
+
+// Interrupts
+reg     [7:0]   int1; // Interrupt control (WR)
+reg     [7:0]   sta;  // Interrupt status (RD)
+reg             iak;  // auto ack int/sta flag
+reg             intb; // Int flag
+
+wire intb_n;
+assign intb_n = ~intb;
+
+// Timer interrupts
+reg     [2:0]   tsta; // Timer interrupt status (RD)
+reg     [2:0]   tmk;  // Timer interrupt mask (WR)
+reg             intt; // Timer interrupt flag
+
+// Real Time Clock (RD)
+reg     [7:0]   tim0; // 5ms ticks (0-199)
+reg     [5:0]   tim1; // seconds (0-59)
+reg     [20:0]  timm; // minutes (0-2^21)
+
+// Memory addressing
 assign ma =
   (ca[15:14] == 2'b11) ? { sr3, ca[13:0] }                // C000-FFFF
   :  (ca[15:14] == 2'b10) ? { sr2, ca[13:0] }             // 8000-BFFF
@@ -99,6 +124,7 @@ assign ma =
     : { 8'b00100000, 1'b0, ca[12:0] }                     // Bank $20 RAMS
   : 22'b11_1111_1111_1111_1111_1111;
 
+// Control bus
 assign ipce_n =
   (ma[21:19] == 3'b000 & !mrq_n) ? 1'b0 : 1'b1;
 
@@ -108,60 +134,6 @@ assign irce_n =
 assign wrb_n = (!mrq_n & crd_n) ? 1'b0 : 1'b1;
 assign roe_n = (!mrq_n & !crd_n) ? 1'b0 : 1'b1;
 assign cdo = (!ior_n) ? r_cdo : cdi;
-
-always @(posedge mck)
-begin
-  if (rin_n == 1'b0) begin
-    com <= 8'b00000000;
-    intb <= 1'b0;
-    iak <= 1'b0;
-  end else if (mck == 1'b1) begin
-    intb <= intt;
-    if (!ior_n & !cm1_n) begin
-      // Z80 has acknowledged int_n
-      intb <= 1'b0;
-      intt <= 1'b0;
-    end else if (!ior_n & crd_n) begin
-      // IO register write
-      case(ca[7:0])
-        8'h70: pb0 <= {ca[12:8], cdi};
-        8'h71: pb1 <= {ca[9:8], cdi};
-        8'h72: pb2 <= {ca[8], cdi};
-        8'h73: pb3 <= {ca[10:8], cdi};
-        8'h74: sbr <= {ca[10:8], cdi};
-        8'hB0: com <= cdi;
-        8'hB1: int1 <= cdi;
-        8'hB4: tsta <= ttsta & ~cdi[2:0];
-        8'hB5: tmk <= cdi[2:0];
-        8'hB6: sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10} | {6'b000000, intt, 1'b};
-        8'hD0: sr0 <= cdi;
-        8'hD1: sr1 <= cdi;
-        8'hD2: sr2 <= cdi;
-        8'hD3: sr3 <= cdi;
-        default: ;
-      endcase
-    end else if (!ior_n & !crd_n) begin
-      // IO register read
-      case(ca[7:0])
-        8'hB1: begin
-          r_cdo <= sta;
-          iak <= 1'b1;
-          end
-        8'hB2: r_cdo <= kbd;
-        8'hB5: r_cdo <= {5'b00000, tsta};
-        8'hD0: r_cdo <= tim0;
-        8'hD1: r_cdo <= {2'b00, tim1};
-        8'hD2: r_cdo <= timm[7:0];
-        8'hD3: r_cdo <= timm[15:8];
-        8'hD4: r_cdo <= {3'b000, timm[20:16]};
-        default: ;
-      endcase
-    end else if (iak) begin
-      sta <= sta & 8'b01101101; // ack. KWait, UART, Time int.
-      iak <= 1'b0;              // int. ack. done.
-    end
-  end
-end
 
 // Keyboard
 reg     [63:0]  kbmat;
@@ -180,57 +152,95 @@ assign kbcol[7] = ca[15] ? kbmat[63:56] : 8'b00000000;
 assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
   & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
 
-// Display (WR only)
-reg     [12:0]  pb0;  // Lores0 (RAM, 64 char, 512B)
-reg     [9:0]   pb1;  // Lores1 (ROM, 448 char, 3.5K)
-reg     [8:0]   pb2;  // Hires0 (RAM, 768 char, 6K)
-reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
-reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
-
-// Interrupts
-//reg     [7:0]   ack;  // Interrupt acknoledge (WR)
-reg     [7:0]   int1; // Interrupt control (WR)
-reg     [7:0]   sta;  // Interrupt status (RD)
-reg             iak;  // auto ack int/sta flag
-reg             intb; // Int flag
-
-assign intb_n = ~intb;
-
-// Timer interrupts
-//reg     [2:0]   tack; // Timer interrupt acknowledge (WR)
-reg     [2:0]   tsta; // Timer interrupt status (RD)
-reg     [2:0]   tmk;  // Timer interrupt mask (WR)
-reg             intt; // Timer interrupt flag
-reg     [2:0]   ttsta;  // Timer interrupt status flags
-
-// Real Time Clock (RD)
-reg     [7:0]   tim0; // 5ms ticks (0-199)
-reg     [5:0]   tim1; // seconds (0-59)
-reg     [20:0]  timm; // minutes (0-2^21)
-
-always @(posedge tick)
+// Heart
+always @(posedge mck)
 begin
-  if (com[4]) begin   // restim
-    tim0 <= 8'h00;
-    tim1 <= 6'h00;
-    timm <= 21'h00;
-    ttsta <= 3'b000;
+  if (rin_n == 1'b0) begin
+    tck <= 16'h0000;
+    com <= 8'h00;
+    intb <= 1'b0;
+    iak <= 1'b0;
   end else begin
-    if (tim0 != 199) begin    // 5ms tick
-      tim0 <= tim0 + 1'b1;
-      ttsta <= 3'b001;
-      intt <= int1[0] & int1[1] & tmk[0];
-    end else begin
-      if (tim1 != 59) begin   // second
-      tim0 <= 8'h00;
-      tim1 <= tim1 + 1'b1;
-      ttsta <= 3'b011;
-      intt <= int1[0] & int1[1] & tmk[1];
-      end else begin          // minute
-        tim1 <= 6'h00;
-        timm <= timm + 1'b1;
-        ttsta <= 3'b111;
-        intt <= int1[0] & int1[1] & tmk[2];
+    if (mck == 1'b1) begin
+      if (tck != 49152) begin
+        tck <= tck+1;
+        if (!ior_n & !cm1_n) begin
+          // Z80 has acknowledged int_n
+          intb <= 1'b0;
+        end else begin
+          if (!ior_n & crd_n) begin
+            // IO register write
+            case(ca[7:0])
+              8'h70: pb0 <= {ca[12:8], cdi};
+              8'h71: pb1 <= {ca[9:8], cdi};
+              8'h72: pb2 <= {ca[8], cdi};
+              8'h73: pb3 <= {ca[10:8], cdi};
+              8'h74: sbr <= {ca[10:8], cdi};
+              8'hB0: com <= cdi;
+              8'hB1: int1 <= cdi;
+              8'hB4: tsta <= tsta & ~cdi[2:0];
+              8'hB5: tmk <= cdi[2:0];
+              8'hB6: sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
+              8'hD0: sr0 <= cdi;
+              8'hD1: sr1 <= cdi;
+              8'hD2: sr2 <= cdi;
+              8'hD3: sr3 <= cdi;
+              default: ;
+            endcase
+          end else begin
+            if (!ior_n & !crd_n) begin
+              // IO register read
+              case(ca[7:0])
+                8'hB1: begin
+                  r_cdo <= {6'b000000, intt, 1'b0};
+                  iak <= 1'b1;
+                end
+                8'hB2: r_cdo <= kbd;
+                8'hB5: r_cdo <= {5'b00000, tsta};
+                8'hD0: r_cdo <= tim0;
+                8'hD1: r_cdo <= {2'b00, tim1};
+                8'hD2: r_cdo <= timm[7:0];
+                8'hD3: r_cdo <= timm[15:8];
+                8'hD4: r_cdo <= {3'b000, timm[20:16]};
+                default: ;
+              endcase
+            end else begin
+              if (iak) begin
+                intt <= 1'b0; // ack. Timer int.
+                iak <= 1'b0;  // int. ack. done.
+              end
+            end
+          end
+        end
+      end else begin
+        tck <= 16'h0000;
+        if (com[4]) begin   // restim
+          tim0 <= 8'h00;
+          tim1 <= 6'h00;
+          timm <= 21'h00;
+          tsta <= 3'b000;
+        end else begin
+          if (tim0 != 199) begin    // 5ms tick
+            tim0 <= tim0 + 1'b1;
+            tsta <= 3'b001;
+            intt <= int1[0] & int1[1] & tmk[0];
+            intb <= int1[0] & int1[1] & tmk[0];
+          end else begin
+            if (tim1 != 59) begin   // second
+              tim0 <= 8'h00;
+              tim1 <= tim1 + 1'b1;
+              tsta <= 3'b011;
+              intt <= int1[0] & int1[1] & tmk[1];
+              intb <= int1[0] & int1[1] & tmk[1];
+            end else begin          // minute
+              tim1 <= 6'h00;
+              timm <= timm + 1'b1;
+              tsta <= 3'b111;
+              intt <= int1[0] & int1[1] & tmk[2];
+              intb <= int1[0] & int1[1] & tmk[2];
+            end
+          end
+        end
       end
     end
   end

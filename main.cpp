@@ -22,7 +22,7 @@
 // So we will toggle the clock every 2,500,000,000 / 5086 = 491520 ticks
 // of the MCLK
 // (divided by 10 for debugging = 0.5ms)
-#define CLK5MS_TICKS ((vluint64_t)49152)
+//#define CLK5MS_TICKS ((vluint64_t)49152)
 
 #define ROM_SIZE      (1<<22)
 #define RAM_SIZE      (1<<19)
@@ -30,7 +30,7 @@
 // Simulation steps (global)
 vluint64_t tb_sstep;
 vluint64_t tb_time;
-vluint64_t clk5ms_ticks;
+//vluint64_t clk5ms_ticks;
 
 Vz88* top;
 vluint8_t ROM[ROM_SIZE];
@@ -79,7 +79,7 @@ int main(int argc, char **argv, char **env)
     // Initialize simulation inputs
     top->reset_n = 0;
     top->clk = 1;
-    top->clk5ms = 1;
+    // top->clk5ms = 1;
 
     top->ram_do = 0;
     top->rom_do = 0;
@@ -90,7 +90,7 @@ int main(int argc, char **argv, char **env)
     tb_sstep = 0;  // Simulation steps (64 bits)
     tb_time = 0;  // Simulation time in ps (64 bits)
 
-    clk5ms_ticks = 0;
+    // clk5ms_ticks = 0;
 
     // Load the ROM file
     FILE *rom = fopen("Z88UK400.rom","rb");
@@ -123,15 +123,15 @@ int main(int argc, char **argv, char **env)
         // Toggle clock
         top->clk = top->clk ^ 1;
         // Generate the 5ms clock
-        if (++clk5ms_ticks == CLK5MS_TICKS) {
-          top->clk5ms ^= 1;
-          clk5ms_ticks = 0;
-        }
+        //if (++clk5ms_ticks == CLK5MS_TICKS) {
+        //  top->clk5ms ^= 1;
+        //  clk5ms_ticks = 0;
+        //}
         // Evaluate verilated model
         top->eval();
 
         // Disassembly
-        if (top->v__DOT__z88_m1_n && !m1_prev) {
+        if (top->v__DOT__z88_m1_n && top->v__DOT__z88_mreq_n && !m1_prev) {
           vluint16_t regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
           vluint16_t regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
           vluint8_t regA = top->v__DOT__z80__DOT__i_tv80_core__DOT__ACC;
@@ -144,10 +144,11 @@ int main(int argc, char **argv, char **env)
           vluint8_t regH = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__H;
           vluint8_t regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
 
-          fprintf(logger, "PC=%04X A=%02X B=%02X C=%02X D=%02X E=%02X H=%02X L=%02X\n",
-            regPC, regA, regB, regC, regD, regE, regH, regL);
+          fprintf(logger, "%04X  ", regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
-          fprintf(logger, ">> %s\n\n", disas_out);
+          fprintf(logger, "%s  ", disas_out);
+          fprintf(logger, "%02X %02X %02X%02X %02X%02X %02X%02X\n",
+            regA, regF, regB, regC, regD, regE, regH, regL);
         }
         m1_prev = top->v__DOT__z88_m1_n;
 
