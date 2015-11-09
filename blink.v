@@ -96,11 +96,8 @@ reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 // Interrupts
 reg     [7:0]   int1; // Interrupt control (WR)
 reg     [7:0]   sta;  // Interrupt status (RD)
-reg             iak;  // auto ack int/sta flag
-reg             intb; // Int flag
-
-wire intb_n;
-assign intb_n = ~intb;
+reg             iak;  // Auto ack. int/sta flag
+reg             intb; // Int. flag
 
 // Timer interrupts
 reg     [2:0]   tsta; // Timer interrupt status (RD)
@@ -125,6 +122,9 @@ assign ma =
   : 22'b11_1111_1111_1111_1111_1111;
 
 // Control bus
+wire intb_n;
+assign intb_n = ~intb;
+
 assign ipce_n =
   (ma[21:19] == 3'b000 & !mrq_n) ? 1'b0 : 1'b1;
 
@@ -152,14 +152,27 @@ assign kbcol[7] = ca[15] ? kbmat[63:56] : 8'b00000000;
 assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
   & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
 
-// Heart
+// Blink Heart
 always @(posedge mck)
 begin
   if (rin_n == 1'b0) begin
     tck <= 16'h0000;
     com <= 8'h00;
+    r_cdo <= 8'h00;
+    sr0 <= 8'h00;
+    sr1 <= 8'h00;
+    sr2 <= 8'h00;
+    sr3 <= 8'h00;
+    int1 <= 8'h00;
+    sta <= 8'h00;
     intb <= 1'b0;
     iak <= 1'b0;
+    tsta <= 3'b000;
+    tmk <= 3'b000;
+    intt <= 1'b0;
+    tim0 <= 8'h00;
+    tim1 <= 6'h00;
+    timm <= 21'h000000;
   end else begin
     if (mck == 1'b1) begin
       if (tck != 49152) begin
