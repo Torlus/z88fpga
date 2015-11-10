@@ -149,6 +149,59 @@ assign kbcol[7] = ca[15] ? kbmat[63:56] : 8'b00000000;
 assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
   & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
 
+// Shortcuts
+wire reg_rd;
+wire reg_wr;
+
+assign reg_rd = !ior_n & crd_n;
+assign reg_wr = !ior_n & !crd_n;
+
+// LCD Registers
+always @(posedge mck)
+begin
+  if (rin_n == 1'b0) begin
+    pb0 <= 13'b0000000000000;
+    pb1 <= 10'b0000000000;
+    pb2 <= 9'b000000000;
+    pb3 <= 11'b00000000000;
+    sbr <= 11'b00000000000;
+  end else begin
+    if (reg_wr) begin // IO Register Write
+      case(ca[7:0])
+        8'h70: pb0 <= {ca[12:8], cdi};
+        8'h71: pb1 <= {ca[9:8], cdi};
+        8'h72: pb2 <= {ca[8], cdi};
+        8'h73: pb3 <= {ca[10:8], cdi};
+        8'h74: sbr <= {ca[10:8], cdi};
+        default: ;
+      endcase
+    end
+  end
+end
+
+// Segment Registers
+always @(posedge mck)
+begin
+  if (rin_n == 1'b0) begin
+    sr0 <= 8'h00;
+    sr1 <= 8'h00;
+    sr2 <= 8'h00;
+    sr3 <= 8'h00;
+  end else begin
+    if (reg_wr) begin // IO Register Write
+      case(ca[7:0])
+        8'hD0: sr0 <= cdi;
+        8'hD1: sr1 <= cdi;
+        8'hD2: sr2 <= cdi;
+        8'hD3: sr3 <= cdi;
+        default: ;
+      endcase
+    end
+  end
+end
+
+
+
 // Blink Heart
 always @(posedge mck)
 begin
@@ -157,10 +210,6 @@ begin
     pm1s <= 1'b1;
     com <= 8'h00;
     r_cdo <= 8'h00;
-    sr0 <= 8'h00;
-    sr1 <= 8'h00;
-    sr2 <= 8'h00;
-    sr3 <= 8'h00;
     int1 <= 8'h00;
     sta <= 8'h00;
     intb <= 1'b0;
@@ -198,20 +247,11 @@ begin
               if (!ior_n & crd_n) begin
                 // IO register write
                 case(ca[7:0])
-                  8'h70: pb0 <= {ca[12:8], cdi};
-                  8'h71: pb1 <= {ca[9:8], cdi};
-                  8'h72: pb2 <= {ca[8], cdi};
-                  8'h73: pb3 <= {ca[10:8], cdi};
-                  8'h74: sbr <= {ca[10:8], cdi};
                   8'hB0: com <= cdi;
                   8'hB1: int1 <= cdi;
                   8'hB4: tsta <= tsta & ~cdi[2:0];
                   8'hB5: tmk <= cdi[2:0];
                   8'hB6: sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
-                  8'hD0: sr0 <= cdi;
-                  8'hD1: sr1 <= cdi;
-                  8'hD2: sr2 <= cdi;
-                  8'hD3: sr3 <= cdi;
                   default: ;
                 endcase
               end else begin
