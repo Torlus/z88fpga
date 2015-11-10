@@ -167,7 +167,7 @@ begin
     iak <= 1'b0;
     tsta <= 3'b000;
     tmk <= 3'b000;
-    tim0 <= 8'h00;
+    tim0 <= 8'h00;        // in fact timer is reset only on hard reset (flap opened TBD)
     tim1 <= 6'h00;
     timm <= 21'h000000;
   end else begin
@@ -179,19 +179,20 @@ begin
           intb <= 1'b0;
           if (int1[7]) begin
             int1[7] <= 1'b0;
-            sta[2] <= 1'b1; // key int.
           end
         end else begin
           if (intb) begin
+            // Int restart Z80 clock
             pm1s <= 1'b1;
           end else begin
             if  (!hlt_n) begin
               if (ca[15:8] != 8'h3F) begin
+                // Halt does Snooze, Z80 clock stopped
                 pm1s <= 1'b0;
               end else begin
                 pm1s <= 1'b0;
-                // Register I is copied on A15-8 during Halt : $3F
-                // Coma : switch off mck and use sck
+                // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
+                // (Note : Register I is copied on A15-8 during Halt)
               end
             end else begin
               if (!ior_n & crd_n) begin
@@ -216,7 +217,7 @@ begin
               end else begin
                 if (!ior_n & !crd_n) begin
                   if (iak) begin
-                    sta[2] <= 1'b0; // ack. Timer int.
+                    sta[1] <= 1'b0; // ack. Timer int.
                     iak <= 1'b0;    // int. ack. done.
                   end else begin
                     // IO register read
@@ -228,14 +229,16 @@ begin
                       8'hB2: begin
                         r_cdo <= kbd;
                         // KWait set and no key pressed will snooze
-                        intb <= int1[7] | ~kbd[7] | ~kbd[6] | ~kbd[5] | ~kbd[4] | ~kbd[3] | ~kbd[2] | ~kbd[1] | ~kbd[0];
+                        pm1s <= ~int1[7] | kbd[7] | kbd[6] | kbd[5] | kbd[4] | kbd[3] | kbd[2] | kbd[1] | kbd[0];
+                        // Key interrupt flag (acknoledged by Tack B6)
+                        sta[2] <= int1[7] | ~kbd[7] | ~kbd[6] | ~kbd[5] | ~kbd[4] | ~kbd[3] | ~kbd[2] | ~kbd[1] | ~kbd[0];
                       end
                       8'hB5: r_cdo <= {5'b00000, tsta};
-                      8'hD0: r_cdo <= tim0;
-                      8'hD1: r_cdo <= {2'b00, tim1};
-                      8'hD2: r_cdo <= timm[7:0];
-                      8'hD3: r_cdo <= timm[15:8];
-                      8'hD4: r_cdo <= {3'b000, timm[20:16]};
+                      8'hD0: r_cdo <= tim0;                   // 5ms tick
+                      8'hD1: r_cdo <= {2'b00, tim1};          // seconds
+                      8'hD2: r_cdo <= timm[7:0];              // minutes
+                      8'hD3: r_cdo <= timm[15:8];             // 256 minutes
+                      8'hD4: r_cdo <= {3'b000, timm[20:16]};  // 64K minutes
                       default: ;
                     endcase
                   end
@@ -247,6 +250,7 @@ begin
       end else begin
         tck <= 16'h0000;
         if (com[4]) begin   // restim
+          // Timer reset has to be set then reset
           tim0 <= 8'h00;
           tim1 <= 6'h00;
           timm <= 21'h00;
@@ -255,20 +259,20 @@ begin
           if (tim0 != 199) begin    // 5ms tick
             tim0 <= tim0 + 1'b1;
             tsta <= 3'b001;
-            sta[2] <= int1[0] & int1[1] & tmk[0];
-            intb <= int1[0] & int1[1] & tmk[0];
+            sta[1] <= int1[0] & int1[1] & tmk[0]; // timer int. flag
+            intb <= int1[0] & int1[1] & tmk[0];   // fires int. if enabled
           end else begin
             if (tim1 != 59) begin   // second
               tim0 <= 8'h00;
               tim1 <= tim1 + 1'b1;
               tsta <= 3'b011;
-              sta[2] <= int1[0] & int1[1] & tmk[1];
+              sta[1] <= int1[0] & int1[1] & tmk[1];
               intb <= int1[0] & int1[1] & tmk[1];
             end else begin          // minute
               tim1 <= 6'h00;
               timm <= timm + 1'b1;
               tsta <= 3'b111;
-              sta[2]<= int1[0] & int1[1] & tmk[2];
+              sta[1]<= int1[0] & int1[1] & tmk[2];
               intb <= int1[0] & int1[1] & tmk[2];
             end
           end
