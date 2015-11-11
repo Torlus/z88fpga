@@ -76,7 +76,7 @@ assign pm1 = (pm1s) ? mck : 1'b0; // Halt stops CPU, Int low restarts.
 // General
 reg     [15:0]  tck;  // tick counter
 reg             pm1s; // Z80 clock switch
-reg     [7:0]   r_cdo;
+reg     [7:0]   r_cdo; // I/O Port read buffer
 
 // Common control register
 reg     [7:0]   com;      // IO $B0
@@ -97,8 +97,6 @@ reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 // Interrupts
 reg     [7:0]   int1; // Interrupt control (WR)
 reg     [7:0]   sta;  // Interrupt status (RD)
-reg             iak;  // Auto ack. int/sta flag
-reg             intb; // Int. flag
 
 // Timer interrupts
 reg     [2:0]   tsta; // Timer interrupt status (RD)
@@ -159,6 +157,10 @@ wire rtc_int;
 assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
 
 integer i;
+
+// FIXME
+assign nmib_n = 1'b1;
+assign intb_n = 1'b1;
 
 // LCD Registers
 always @(posedge mck)
@@ -222,12 +224,18 @@ begin
     tsta_clr_ack <= 3'd0;
   end else begin
     for(i = 0; i < 3; i = i + 1) begin
-      if (tsta_set_ack[i] != tsta_set_req[i]) begin
-        tsta_set_ack[i] <= tsta_set_req[i];
+      if (!tsta_set_req[i]) begin
+        tsta_set_ack[i] <= 1'b0;
+      end
+      if (!tsta_clr_req[i]) begin
+        tsta_clr_ack[i] <= 1'b0;
+      end
+      if (tsta_set_req[i] & !tsta_set_ack[i]) begin
+        tsta_set_ack[i] <= 1'b1;
         tsta[i] <= 1'b1;
-      end else if (tsta_clr_ack[i] != tsta_clr_req[i]) begin
-        tsta_clr_ack[i] <= tsta_clr_req[i];
-        tsta[i] <= 0'b1;
+      end else if (tsta_clr_req[i] & !tsta_clr_ack[i]) begin
+        tsta_clr_ack[i] <= 1'b1;
+        tsta[i] <= 1'b0;
       end
     end
   end
@@ -244,18 +252,19 @@ begin
     timm <= 21'd0;
     tsta_set_req <= 3'd0;
   end else begin
+    tsta_set_req <= 3'd0;
     tck <= tck + 16'd1;
     if (tck == 16'd49152) begin
       tck <= 16'd0;
-      tsta_set_req[0] <= !tsta_set_req[0];
+      tsta_set_req[0] <= 1'b1;
       tim0 <= tim0 + 8'd1;
       if (tim0 == 8'd199) begin
         tim0 <= 8'd0;
-        tsta_set_req[1] <= !tsta_set_req[1];
+        tsta_set_req[1] <= 1'b1;
         tim1 <= tim1 + 6'd1;
         if (tim1 == 6'd59) begin
           tim1 <= 6'd0;
-          tsta_set_req[2] <= !tsta_set_req[2];
+          tsta_set_req[2] <= 1'b1;
           timm <= timm + 21'd1;
         end
       end
@@ -263,30 +272,20 @@ begin
   end
 end
 
-// RTC: Registers
+// RTC: IO Registers
 always @(posedge mck)
 begin
   if (!rin_n) begin
     tsta_clr_req <= 3'd0;
     tmk <= 3'd0;
   end else begin
-    if (reg_rd) begin // IO Register Read
-      case(ca[7:0])
-        8'hB5: r_cdo <= {5'b00000, tsta};
-        8'hD0: r_cdo <= tim0;                   // 5ms tick
-        8'hD1: r_cdo <= {2'b00, tim1};          // seconds
-        8'hD2: r_cdo <= timm[7:0];              // minutes
-        8'hD3: r_cdo <= timm[15:8];             // 256 minutes
-        8'hD4: r_cdo <= {3'b000, timm[20:16]};  // 64K minutes
-        default: ;
-      endcase
-    end
-    if (reg_wr) begin // IO Register Read
+    tsta_clr_req <= 3'd0;
+    if (reg_wr) begin // IO Register Write
       case(ca[7:0])
         8'hB4: begin
           for(i = 0; i < 3; i = i + 1) begin
-            if (cdi[i] & (tsta_clr_req[i] == tsta_clr_ack[i])) begin
-              tsta_clr_req[i] <= !tsta_clr_req[i];
+            if (cdi[i]) begin
+              tsta_clr_req[i] <= 1'b1;
             end
           end
         end
@@ -297,38 +296,80 @@ begin
   end
 end
 
+// Register reads (r_cdo control)
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    r_cdo <= 8'd0;
+  end else begin
+    if (reg_rd) begin // IO Register Read
+      case(ca[7:0])
+        8'hB1: r_cdo <= sta;
+        8'hB2: r_cdo <= kbd;
+        8'hB5: r_cdo <= {5'b00000, tsta};
+        8'hD0: r_cdo <= tim0;                   // 5ms tick
+        8'hD1: r_cdo <= {2'b00, tim1};          // seconds
+        8'hD2: r_cdo <= timm[7:0];              // minutes
+        8'hD3: r_cdo <= timm[15:8];             // 256 minutes
+        8'hD4: r_cdo <= {3'b000, timm[20:16]};  // 64K minutes
+        default: ;
+      endcase
+    end
+  end
+end
+
+// PM1S as a RS-latch
+reg             pm1s_set_req;
+reg             pm1s_set_ack;
+reg             pm1s_clr_req;
+reg             pm1s_clr_ack;
+
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    pm1s <= 1'b1;
+    pm1s_set_ack <= 1'b0;
+    pm1s_clr_ack <= 1'b0;
+  end else begin
+    if (!pm1s_set_req) begin
+      pm1s_set_ack <= 1'b0;
+    end
+    if (!pm1s_clr_req) begin
+      pm1s_clr_ack <= 1'b0;
+    end
+
+    if (pm1s_set_req & !pm1s_set_ack) begin
+      pm1s_set_ack <= 1'b1;
+      pm1s <= 1'b1;
+    end else if (pm1s_clr_req & !pm1s_clr_ack) begin
+      pm1s_clr_ack <= 1'b1;
+      pm1s <= 1'b0;
+    end
+  end
+end
 
 
 // Blink Heart
+reg intb;
 always @(posedge mck)
 begin
   if (rin_n == 1'b0) begin
-    pm1s <= 1'b1;
     com <= 8'h00;
-    r_cdo <= 8'h00;
     int1 <= 8'h00;
     sta <= 8'h00;
-    intb <= 1'b0;
-    iak <= 1'b0;
   end else begin
     if (mck == 1'b1) begin
-      if (!ior_n & !cm1_n) begin
-        // Z80 has acknowledged int_n
-        intb <= 1'b0;
-        if (int1[7]) begin
-          int1[7] <= 1'b0;
-        end
-      end else begin
+      begin
         if (intb) begin
           // Int restart Z80 clock
-          pm1s <= 1'b1;
+          // FIXME pm1s <= 1'b1;
         end else begin
           if  (!hlt_n) begin
             if (ca[15:8] != 8'h3F) begin
               // Halt does Snooze, Z80 clock stopped
-              pm1s <= 1'b0;
+              // FIXME pm1s <= 1'b0;
             end else begin
-              pm1s <= 1'b0;
+              // FIXME pm1s <= 1'b0;
               // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
               // (Note : Register I is copied on A15-8 during Halt)
             end
@@ -338,32 +379,9 @@ begin
               case(ca[7:0])
                 8'hB0: com <= cdi;
                 8'hB1: int1 <= cdi;
-                8'hB6: sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
+                8'hB6: ; // FIXME sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
                 default: ;
               endcase
-            end else begin
-              if (!ior_n & !crd_n) begin
-                if (iak) begin
-                  sta[1] <= 1'b0; // ack. Timer int.
-                  iak <= 1'b0;    // int. ack. done.
-                end else begin
-                  // IO register read
-                  case(ca[7:0])
-                    8'hB1: begin
-                      r_cdo <= sta;
-                      iak <= 1'b1;
-                    end
-                    8'hB2: begin
-                      r_cdo <= kbd;
-                      // KWait set and no key pressed will snooze
-                      pm1s <= ~int1[7] | kbd[7] | kbd[6] | kbd[5] | kbd[4] | kbd[3] | kbd[2] | kbd[1] | kbd[0];
-                      // Key interrupt flag (acknoledged by Tack B6)
-                      sta[2] <= int1[7] | ~kbd[7] | ~kbd[6] | ~kbd[5] | ~kbd[4] | ~kbd[3] | ~kbd[2] | ~kbd[1] | ~kbd[0];
-                    end
-                    default: ;
-                  endcase
-                end
-              end
             end
           end
         end
