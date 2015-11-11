@@ -79,12 +79,13 @@ tv80s z80 (
   .A(z88_ca),
   .dout(z80_do),
   .reset_n(z88_rout_n),
-  .clk(z88_pm1),
+  .clk(clk),
   .wait_n(1'b1),                // not wired
   .int_n(z88_int_n),
   .nmi_n(z88_nmi_n),
   .busrq_n(1'b1),               // not wired
-  .di(z88_cdo)
+  .di(z88_cdo),
+  .cen(z88_pm1)
 );
 
 assign z88_nmi_n = 1'b1;

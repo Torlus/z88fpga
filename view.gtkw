@@ -1,27 +1,26 @@
 [*]
 [*] GTKWave Analyzer v3.3.65 (w)1999-2015 BSI
-[*] Fri Nov  6 19:11:21 2015
+[*] Wed Nov 11 22:50:13 2015
 [*]
 [dumpfile] "/Users/greg/Projects/z88fpga/z88_0000.vcd"
-[dumpfile_mtime] "Fri Nov  6 18:54:21 2015"
-[dumpfile_size] 29187350
+[dumpfile_mtime] "Wed Nov 11 22:45:05 2015"
+[dumpfile_size] 46924862
 [savefile] "/Users/greg/Projects/z88fpga/view.gtkw"
-[timestart] 0
+[timestart] 664600
 [size] 1627 919
-[pos] -1 -1
-*-18.000000 2499865634 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -24
+*-17.000000 1047716 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.v.
 [treeopen] TOP.v.z80.
 [sst_width] 193
 [signals_width] 217
 [sst_expanded] 1
-[sst_vpaned_height] 318
+[sst_vpaned_height] 273
 @200
 -clock & reset
 @28
 TOP.v.clk
-TOP.v.clk5ms
 TOP.v.reset_n
 @200
 -memory access
@@ -37,6 +36,7 @@ TOP.v.ram_we_n
 -Z80
 @28
 TOP.v.z80.clk
+TOP.v.z80.cen
 @22
 TOP.v.z80.A[15:0]
 @28
@@ -47,6 +47,9 @@ TOP.v.z80.rd_n
 TOP.v.z80.wr_n
 @22
 TOP.v.z80.di[7:0]
+@23
+TOP.v.z80.di_reg[7:0]
+@22
 TOP.v.z80.dout[7:0]
 @28
 TOP.v.z80.nmi_n

@@ -70,8 +70,26 @@ input           kbmat;
 // Reset
 assign rout_n = rin_n;
 
+
+reg   [1:0]   z80_clkcnt;
+reg           z80_clk;
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    z80_clkcnt <= 2'b00;
+    z80_clk <= 1'b0;
+  end else begin
+    z80_clkcnt <= z80_clkcnt + 2'd1;
+    z80_clk <= 1'b0;
+    if (z80_clkcnt == 2'b10) begin
+      z80_clkcnt <= 2'b00;
+      z80_clk <= 1'b1;
+    end
+  end
+end
+
 // Clocks
-assign pm1 = (pm1s) ? mck : 1'b0; // Halt stops CPU, Int low restarts.
+assign pm1 = (pm1s) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
 
 // General
 reg     [15:0]  tck;  // tick counter
