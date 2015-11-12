@@ -168,8 +168,8 @@ assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
 // Shortcuts
 wire reg_rd;
 wire reg_wr;
-assign reg_rd = !ior_n & crd_n;
-assign reg_wr = !ior_n & !crd_n;
+assign reg_rd = !ior_n & !crd_n;
+assign reg_wr = !ior_n & crd_n;
 
 wire rtc_int;
 assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
