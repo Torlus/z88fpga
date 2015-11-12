@@ -89,7 +89,7 @@ begin
 end
 
 // Clocks
-assign pm1 = (pm1s) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
+assign pm1 = (pm1s & hlt_n) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
 
 // General
 reg     [15:0]  tck;  // tick counter
