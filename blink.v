@@ -153,17 +153,17 @@ reg     [63:0]  kbmat;
 wire    [7:0]   kbcol[0:7];
 wire    [7:0]   kbd;
 
-assign kbcol[0] = ca[ 8] ? kbmat[ 7: 0] : 8'b00000000;
-assign kbcol[1] = ca[ 9] ? kbmat[15: 8] : 8'b00000000;
-assign kbcol[2] = ca[10] ? kbmat[23:16] : 8'b00000000;
-assign kbcol[3] = ca[11] ? kbmat[31:24] : 8'b00000000;
-assign kbcol[4] = ca[12] ? kbmat[39:32] : 8'b00000000;
-assign kbcol[5] = ca[13] ? kbmat[47:40] : 8'b00000000;
-assign kbcol[6] = ca[14] ? kbmat[55:48] : 8'b00000000;
-assign kbcol[7] = ca[15] ? kbmat[63:56] : 8'b00000000;
+assign kbcol[0] = !ca[ 8] ? kbmat[ 7: 0] : 8'b00000000;
+assign kbcol[1] = !ca[ 9] ? kbmat[15: 8] : 8'b00000000;
+assign kbcol[2] = !ca[10] ? kbmat[23:16] : 8'b00000000;
+assign kbcol[3] = !ca[11] ? kbmat[31:24] : 8'b00000000;
+assign kbcol[4] = !ca[12] ? kbmat[39:32] : 8'b00000000;
+assign kbcol[5] = !ca[13] ? kbmat[47:40] : 8'b00000000;
+assign kbcol[6] = !ca[14] ? kbmat[55:48] : 8'b00000000;
+assign kbcol[7] = !ca[15] ? kbmat[63:56] : 8'b00000000;
 
-assign kbd = kbcol[0] | kbcol[1] | kbcol[2] | kbcol[3]
-  & kbcol[4] | kbcol[5] | kbcol[6] | kbcol[7];
+assign kbd = ~kbcol[0] & ~kbcol[1] & ~kbcol[2] & ~kbcol[3]
+  & ~kbcol[4] & ~kbcol[5] & ~kbcol[6] & ~kbcol[7];
 
 // Shortcuts
 wire reg_rd;
