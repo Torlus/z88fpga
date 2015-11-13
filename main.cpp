@@ -40,12 +40,13 @@ vluint8_t RAM[RAM_SIZE];
 // Disassembly
 FILE *logger;
 bool disas_rom, disas_ram;
+int bank;
 
 Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, void *user_data) {
   if (disas_rom)
-    return ROM[addr & (rom_size-1)];
+    return ROM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF)) & (ROM_SIZE-1)];
   if (disas_ram)
-    return RAM[addr & (RAM_SIZE-1)];
+    return RAM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF)) & (RAM_SIZE-1)];
   fprintf(logger, "PC: Unexpected location %04X\n", addr);
   return 0xFF;
 }
@@ -155,6 +156,7 @@ int main(int argc, char **argv, char **env)
           vluint16_t regIX = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IX;
           vluint16_t regIY = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IY;
           vluint8_t busD = top->v__DOT__z88_cdo;
+          vluint32_t mADR = top->v__DOT__z88_ma;
 
           fprintf(logger, "%04X  ", regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
@@ -163,6 +165,9 @@ int main(int argc, char **argv, char **env)
             regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
         }
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
+
+        // For call back
+        bank = top->v__DOT__z88_ma<<8;
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
