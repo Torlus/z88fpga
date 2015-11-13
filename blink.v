@@ -330,7 +330,14 @@ begin
     if (reg_rd) begin // IO Register Read
       case(ca[7:0])
         8'hB1: r_cdo <= sta;
-        8'hB2: r_cdo <= kbd;
+        8'hB2: begin
+          if (int1[7]) begin
+            int1[7] <= ~int1[7];    // clear Kwait
+            pm1s_clr_req <= 1'b1;   // Snooze
+          end else begin
+            r_cdo <= kbd;
+          end
+        end
         8'hB5: r_cdo <= {5'b00000, tsta};
         8'hD0: r_cdo <= tim0;                   // 5ms tick
         8'hD1: r_cdo <= {2'b00, tim1};          // seconds
