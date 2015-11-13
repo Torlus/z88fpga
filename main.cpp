@@ -131,7 +131,7 @@ int main(int argc, char **argv, char **env)
         top->eval();
 
         // Disassembly
-        if (top->v__DOT__z88_m1_n && top->v__DOT__z88_mreq_n && !m1_prev) {
+        if (!top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && m1_prev) {
           vluint16_t regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
           vluint16_t regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
           vluint8_t regA = top->v__DOT__z80__DOT__i_tv80_core__DOT__ACC;
@@ -146,11 +146,11 @@ int main(int argc, char **argv, char **env)
 
           fprintf(logger, "%04X  ", regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
-          fprintf(logger, "%s  ", disas_out);
+          fprintf(logger, "%-16s  ", disas_out);
           fprintf(logger, "%02X %02X %02X%02X %02X%02X %02X%02X\n",
             regA, regF, regB, regC, regD, regE, regH, regL);
         }
-        m1_prev = top->v__DOT__z88_m1_n;
+        m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
