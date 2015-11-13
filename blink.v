@@ -89,7 +89,7 @@ begin
 end
 
 // Clocks
-assign pm1 = (pm1s & hlt_n) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
+assign pm1 = (pm1s) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
 
 // General
 reg     [15:0]  tck;  // tick counter
@@ -381,8 +381,13 @@ always @(posedge mck)
 begin
   if (!rin_n) begin
     pm1s_set_req <= 1'b0;
+    pm1s_clr_req <= 1'b0;
   end else begin
     pm1s_set_req <= 1'b0;
+    pm1s_set_req <= 1'b0;
+    if (!hlt_n & !intb) begin
+      pm1s_clr_req <= 1'b1;
+    end
     if (intb) begin
       pm1s_set_req <= 1'b1;
     end
