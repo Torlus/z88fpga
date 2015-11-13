@@ -484,7 +484,7 @@ begin
   end else begin
     kbds_set_req <= 1'b0;
     if (kbd != 8'hFF) begin
-      kbds_set_req <= 1'b0;
+      kbds_set_req <= 1'b1;
     end
   end
 end
