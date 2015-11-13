@@ -39,10 +39,10 @@ vluint8_t RAM[RAM_SIZE];
 
 // Disassembly
 FILE *logger;
-bool disas_rom, disas_ram;
+// bool disas_rom, disas_ram;
 int bank;
 
-Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, void *user_data) {
+Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, Z80EX_BYTE bank) {
   if (!(bank & 0x20))
     return ROM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
   else
@@ -159,22 +159,22 @@ int main(int argc, char **argv, char **env)
           vluint8_t busD = top->v__DOT__z88_cdo;
           vluint8_t seg0 = (regPC>>13 & 0x07);
           vluint8_t seg = (regPC>>14 & 0x03);
-          vluint8_t bank;
-            if (seg0 == 0x00) {bank = 0x00;}
+          vluint8_t bnk;
+            if (seg0 == 0x00) {bnk = 0x00;}
             else{
               switch(seg){
-                case 0x00:{bank = top->v__DOT__theblink__DOT__sr0;
+                case 0x00:{bnk = top->v__DOT__theblink__DOT__sr0;
                 break;}
-                case 0x01:{bank = top->v__DOT__theblink__DOT__sr1;
+                case 0x01:{bnk = top->v__DOT__theblink__DOT__sr1;
                 break;}
-                case 0x02:{bank = top->v__DOT__theblink__DOT__sr2;
+                case 0x02:{bnk = top->v__DOT__theblink__DOT__sr2;
                 break;}
-                case 0x03:{bank = top->v__DOT__theblink__DOT__sr3;
+                case 0x03:{bnk = top->v__DOT__theblink__DOT__sr3;
                 break;}
               }
             }
-          fprintf(logger, "%02X%04X  ", bank, regPC);
-          z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
+          fprintf(logger, "%02X%04X  ", bnk, regPC);
+          z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
           fprintf(logger, "%-16s  ", disas_out);
           fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
             regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
@@ -183,15 +183,15 @@ int main(int argc, char **argv, char **env)
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
-          disas_rom = true; disas_ram = false;
-          top->rom_do = ROM[top->rom_a & (rom_size-1)];
+//          disas_rom = true; disas_ram = false;
+          top->rom_do = ROM[top->rom_a & (ROM_SIZE-1)];
         } else {
           top->rom_do = 0xFF;
         }
 
         // Simulate RAM behaviour
         if (!top->ram_oe_n && !top->ram_ce_n) {
-          disas_rom = false; disas_ram = true;
+//          disas_rom = false; disas_ram = true;
           top->ram_do = ROM[top->ram_a & (RAM_SIZE-1)];
         } else {
           top->ram_do = 0xFF;
