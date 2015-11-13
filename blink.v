@@ -173,15 +173,6 @@ wire reg_wr;
 assign reg_rd = !ior_n & !crd_n;
 assign reg_wr = !ior_n & crd_n;
 
-// Interrupts
-wire rtc_int;
-assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
-
-wire kbd_int;
-assign kbd_int = (kbd != 8'hFF & int1[7]) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
-
-assign sta = { 5'b00000, kbd_int, rtc_int, 1'b0};
-
 integer i;
 
 // FIXME
@@ -326,16 +317,18 @@ always @(posedge mck)
 begin
   if (!rin_n) begin
     r_cdo <= 8'd0;
+    pm1s_clr_req2 <= 1'b0;
   end else begin
+    pm1s_clr_req2 <= 1'b0;
     if (reg_rd) begin // IO Register Read
       case(ca[7:0])
         8'hB1: r_cdo <= sta;
         8'hB2: begin
+          r_cdo <= kbd;
           if (int1[7]) begin
-            int1[7] <= ~int1[7];    // clear Kwait
-            pm1s_clr_req <= 1'b1;   // Snooze
-          end else begin
-            r_cdo <= kbd;
+            // If this is required, int1[7] should be a RS-latch
+            // int1[7] <= ~int1[7];    // clear Kwait
+            pm1s_clr_req2 <= 1'b1;   // Snooze
           end
         end
         8'hB5: r_cdo <= {5'b00000, tsta};
@@ -355,6 +348,8 @@ reg             pm1s_set_req;
 reg             pm1s_set_ack;
 reg             pm1s_clr_req;
 reg             pm1s_clr_ack;
+reg             pm1s_clr_req2;
+reg             pm1s_clr_ack2;
 
 always @(posedge mck)
 begin
@@ -362,12 +357,16 @@ begin
     pm1s <= 1'b1;
     pm1s_set_ack <= 1'b0;
     pm1s_clr_ack <= 1'b0;
+    pm1s_clr_ack2 <= 1'b0;
   end else begin
     if (!pm1s_set_req) begin
       pm1s_set_ack <= 1'b0;
     end
     if (!pm1s_clr_req) begin
       pm1s_clr_ack <= 1'b0;
+    end
+    if (!pm1s_clr_req2) begin
+      pm1s_clr_ack2 <= 1'b0;
     end
 
     if (pm1s_set_req & !pm1s_set_ack) begin
@@ -376,10 +375,26 @@ begin
     end else if (pm1s_clr_req & !pm1s_clr_ack) begin
       pm1s_clr_ack <= 1'b1;
       pm1s <= 1'b0;
+    end else if (pm1s_clr_req2 & !pm1s_clr_ack2) begin
+      pm1s_clr_ack2 <= 1'b1;
+      pm1s <= 1'b0;
     end
   end
 end
 
+assign sta = { 5'b00000, kbd_int, rtc_int, 1'b0};
+
+// Keyboard Status
+reg kbds;
+
+// Interrupts
+wire rtc_int;
+assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
+
+wire kbd_int;
+assign kbd_int = (kbds) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
+
+// Interrupt signal
 wire intb;
 assign intb = (rtc_int & int1[0] & int1[1])
   | (kbd_int & int1[0] & int1[2]);
@@ -408,20 +423,68 @@ end
 // Register Writes
 always @(posedge mck)
 begin
-  if (rin_n == 1'b0) begin
+  if (!rin_n) begin
     com <= 8'h00;
     int1 <= 8'h00;
+    kbds_clr_req <= 1'b0;
   end else begin
+    kbds_clr_req <= 1'b0;
     if (reg_wr) begin
       // IO register write
       case(ca[7:0])
         8'hB0: com <= cdi;
         8'hB1: int1 <= cdi;
         8'hB6: begin
-          // FIXME sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
+          if (ca[2]) begin
+            kbds_clr_req <= 1'b1;
+          end
         end
         default: ;
       endcase
+    end
+  end
+end
+
+// Keyboard Status as a RS-latch
+reg             kbds_set_req;
+reg             kbds_set_ack;
+reg             kbds_clr_req;
+reg             kbds_clr_ack;
+
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    kbds <= 1'b0;
+    kbds_set_ack <= 1'b0;
+    kbds_clr_ack <= 1'b0;
+  end else begin
+    if (!kbds_set_req) begin
+      kbds_set_ack <= 1'b0;
+    end
+    if (!kbds_clr_req) begin
+      kbds_clr_ack <= 1'b0;
+    end
+
+    if (kbds_set_req & !kbds_set_ack) begin
+      kbds_set_ack <= 1'b1;
+      kbds <= 1'b1;
+    end else if (kbds_clr_req & !kbds_clr_ack) begin
+      kbds_clr_ack <= 1'b1;
+      kbds <= 1'b0;
+    end
+  end
+end
+
+// Keyboard Status change
+// TODO (?) Debounce
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    kbds_set_req <= 1'b0;
+  end else begin
+    kbds_set_req <= 1'b0;
+    if (kbd != 8'hFF) begin
+      kbds_set_req <= 1'b0;
     end
   end
 end
