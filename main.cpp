@@ -156,7 +156,8 @@ int main(int argc, char **argv, char **env)
           vluint8_t regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
 
           fprintf(logger, "%04X  ", regPC);
-          z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
+          z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte,
+            /*regPC*/ top->ram_a, NULL);
           fprintf(logger, "%-16s  ", disas_out);
           fprintf(logger, "%02X "BYTETOBINARYPATTERN" %02X%02X %02X%02X %02X%02X\n",
             regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL);
