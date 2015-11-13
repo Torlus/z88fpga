@@ -24,7 +24,7 @@
 // (divided by 10 for debugging = 0.5ms)
 //#define CLK5MS_TICKS ((vluint64_t)49152)
 
-#define ROM_SIZE      (1<<22)
+#define ROM_SIZE      (1<<19)
 #define RAM_SIZE      (1<<19)
 
 // Simulation steps (global)
@@ -43,12 +43,12 @@ bool disas_rom, disas_ram;
 int bank;
 
 Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, void *user_data) {
-  if (disas_rom)
-    return ROM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF)) & (ROM_SIZE-1)];
-  if (disas_ram)
-    return RAM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF)) & (RAM_SIZE-1)];
-  fprintf(logger, "PC: Unexpected location %04X\n", addr);
-  return 0xFF;
+  if (!(bank & 0x20))
+    return ROM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
+  else
+    return RAM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
+  // fprintf(logger, "PC: Unexpected location %04X\n", addr);
+  // return 0xFF;
 }
 
 int main(int argc, char **argv, char **env)
@@ -157,18 +157,29 @@ int main(int argc, char **argv, char **env)
           vluint16_t regIX = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IX;
           vluint16_t regIY = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IY;
           vluint8_t busD = top->v__DOT__z88_cdo;
-          vluint32_t mADR = top->v__DOT__z88_ma;
-
-          fprintf(logger, "%04X  ", regPC);
+          vluint8_t seg0 = (regPC>>13 & 0x07);
+          vluint8_t seg = (regPC>>14 & 0x03);
+          vluint8_t bank;
+            if (seg0 == 0x00) {bank = 0x00;}
+            else{
+              switch(seg){
+                case 0x00:{bank = top->v__DOT__theblink__DOT__sr0;
+                break;}
+                case 0x01:{bank = top->v__DOT__theblink__DOT__sr1;
+                break;}
+                case 0x02:{bank = top->v__DOT__theblink__DOT__sr2;
+                break;}
+                case 0x03:{bank = top->v__DOT__theblink__DOT__sr3;
+                break;}
+              }
+            }
+          fprintf(logger, "%02X%04X  ", bank, regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
           fprintf(logger, "%-16s  ", disas_out);
           fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
             regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
         }
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
-
-        // For call back
-        bank = top->v__DOT__z88_ma<<8;
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
