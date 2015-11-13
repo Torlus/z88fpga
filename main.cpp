@@ -94,7 +94,8 @@ int main(int argc, char **argv, char **env)
     // clk5ms_ticks = 0;
 
     // Load the ROM file
-    FILE *rom = fopen("Z88UK400.rom","rb");
+    //FILE *rom = fopen("Z88UK400.rom","rb");
+    FILE *rom = fopen("oz47b.rom","rb");
     if (rom == NULL) {
       printf("Cannot open ROM file for reading.\n");
       exit(-1);
