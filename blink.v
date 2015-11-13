@@ -114,7 +114,9 @@ reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 
 // Interrupts
 reg     [7:0]   int1; // Interrupt control (WR)
-reg     [7:0]   sta;  // Interrupt status (RD)
+// reg     [7:0]   sta;  // Interrupt status (RD)
+wire    [7:0]   sta;
+
 
 // Timer interrupts
 reg     [2:0]   tsta; // Timer interrupt status (RD)
@@ -174,11 +176,15 @@ assign reg_wr = !ior_n & crd_n;
 wire rtc_int;
 assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
 
+wire kbd_int;
+assign kbd_int = 1'b0;
+
+assign sta = { 5'b00000, kbd_int, rtc_int, 1'b0};
+
 integer i;
 
 // FIXME
 assign nmib_n = 1'b1;
-assign intb_n = 1'b1;
 
 // LCD Registers
 always @(posedge mck)
@@ -366,44 +372,52 @@ begin
   end
 end
 
+wire intb;
+assign intb = (rtc_int & int1[0] & int1[1])
+  | (kbd_int & int1[0] & int1[2]);
+assign intb_n = !intb;
+
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    pm1s_set_req <= 1'b0;
+  end else begin
+    pm1s_set_req <= 1'b0;
+    if (intb) begin
+      pm1s_set_req <= 1'b1;
+    end
+  end
+end
+
 
 // Blink Heart
-reg intb;
 always @(posedge mck)
 begin
   if (rin_n == 1'b0) begin
     com <= 8'h00;
     int1 <= 8'h00;
-    sta <= 8'h00;
+    pm1s_clr_req <= 1'b0;
   end else begin
-    if (mck == 1'b1) begin
-      begin
-        if (intb) begin
-          // Int restart Z80 clock
-          // FIXME pm1s <= 1'b1;
-        end else begin
-          if  (!hlt_n) begin
-            if (ca[15:8] != 8'h3F) begin
-              // Halt does Snooze, Z80 clock stopped
-              // FIXME pm1s <= 1'b0;
-            end else begin
-              // FIXME pm1s <= 1'b0;
-              // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
-              // (Note : Register I is copied on A15-8 during Halt)
-            end
-          end else begin
-            if (!ior_n & crd_n) begin
-              // IO register write
-              case(ca[7:0])
-                8'hB0: com <= cdi;
-                8'hB1: int1 <= cdi;
-                8'hB6: ; // FIXME sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
-                default: ;
-              endcase
-            end
-          end
-        end
+    pm1s_clr_req <= 1'b0;
+    if (!hlt_n) begin
+      if (ca[15:8] != 8'h3F) begin
+        pm1s_clr_req <= 1'b1;
+      end else begin
+        // FIXME pm1s <= 1'b0;
+        // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
+        // (Note : Register I is copied on A15-8 during Halt)
       end
+    end
+    if (reg_wr) begin
+      // IO register write
+      case(ca[7:0])
+        8'hB0: com <= cdi;
+        8'hB1: int1 <= cdi;
+        8'hB6: begin
+          // FIXME sta <= sta & {1'b1, ~cdi[6:5], 1'b1, ~cdi[3:2], 2'b10};
+        end
+        default: ;
+      endcase
     end
   end
 end
