@@ -173,11 +173,12 @@ wire reg_wr;
 assign reg_rd = !ior_n & !crd_n;
 assign reg_wr = !ior_n & crd_n;
 
+// Interrupts
 wire rtc_int;
 assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
 
 wire kbd_int;
-assign kbd_int = 1'b0;
+assign kbd_int = (kbd != 8'hFF & int1[7]) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
 
 assign sta = { 5'b00000, kbd_int, rtc_int, 1'b0};
 
@@ -329,7 +330,14 @@ begin
     if (reg_rd) begin // IO Register Read
       case(ca[7:0])
         8'hB1: r_cdo <= sta;
-        8'hB2: r_cdo <= kbd;
+        8'hB2: begin
+          if (int1[7]) begin
+            int1[7] <= ~int1[7];    // clear Kwait
+            pm1s_clr_req <= 1'b1;   // Snooze
+          end else begin
+            r_cdo <= kbd;
+          end
+        end
         8'hB5: r_cdo <= {5'b00000, tsta};
         8'hD0: r_cdo <= tim0;                   // 5ms tick
         8'hD1: r_cdo <= {2'b00, tim1};          // seconds
