@@ -173,11 +173,12 @@ wire reg_wr;
 assign reg_rd = !ior_n & !crd_n;
 assign reg_wr = !ior_n & crd_n;
 
+// Interrupts
 wire rtc_int;
 assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
 
 wire kbd_int;
-assign kbd_int = 1'b0;
+assign kbd_int = (kbd != 8'hFF & int1[7]) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
 
 assign sta = { 5'b00000, kbd_int, rtc_int, 1'b0};
 
