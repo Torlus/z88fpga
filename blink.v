@@ -342,6 +342,52 @@ begin
   end
 end
 
+// INTB as a RS-latch
+reg             intb_set_req;
+reg             intb_set_ack;
+reg             intb_clr_req;
+reg             intb_clr_ack;
+
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    intb_n <= 1'b1;
+    intb_set_ack <= 1'b0;
+    intb_clr_ack <= 1'b0;
+  end else begin
+    if (!intb_set_req) begin
+      intb_set_ack <= 1'b0;
+    end
+    if (!intb_clr_req) begin
+      intb_clr_ack <= 1'b0;
+    end
+
+    if (intb_set_req & !intb_set_ack) begin
+      intb_set_ack <= 1'b1;
+      intb_n <= 1'b0;
+    end else if (intb_clr_req & !intb_clr_ack) begin
+      intb_clr_ack <= 1'b1;
+      intb_n <= 1'b1;
+    end
+  end
+end
+
+wire intb;
+assign intb = (rtc_int & int1[0] & int1[1])
+  | (kbd_int & int1[0] & int1[2]);
+
+always @(posedge mck)
+begin
+  intb_clr_req <= 1'b0;
+  intb_set_req <= 1'b0;
+  if (intb) begin
+    intb_set_req <= 1'b1;     // Fires an interrupt
+  end
+  if (!ior_n & !cm1_n) begin
+      intb_clr_req <= 1'b1;   // IOREQ + M1 = Z80 has acknowledged interrupt
+  end
+end
+
 // PM1S as a RS-latch
 reg             pm1s_set_req;
 reg             pm1s_set_ack;
@@ -372,11 +418,6 @@ begin
   end
 end
 
-wire intb;
-assign intb = (rtc_int & int1[0] & int1[1])
-  | (kbd_int & int1[0] & int1[2]);
-assign intb_n = !intb;
-
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -384,13 +425,13 @@ begin
     pm1s_clr_req <= 1'b0;
   end else begin
     pm1s_set_req <= 1'b0;
-    pm1s_set_req <= 1'b0;
-    if (!hlt_n & !intb) begin
+    pm1s_clr_req <= 1'b0;
+    if (!hlt_n & intb_n) begin
       pm1s_clr_req <= 1'b1;   // Do Snooze
       // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
       // (Note : Register I is copied on A15-8 during Halt)
     end
-    if (intb) begin
+    if (!intb_n) begin
       pm1s_set_req <= 1'b1;   // Awake Z80 CPU
     end
   end
