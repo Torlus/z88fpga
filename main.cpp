@@ -154,12 +154,14 @@ int main(int argc, char **argv, char **env)
           vluint8_t regE = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__E;
           vluint8_t regH = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__H;
           vluint8_t regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
+          vluint16_t regIX = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IX;
+          vluint16_t regIY = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IY;
 
           fprintf(logger, "%04X  ", regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
           fprintf(logger, "%-16s  ", disas_out);
-          fprintf(logger, "%02X "BYTETOBINARYPATTERN" %02X%02X %02X%02X %02X%02X\n",
-            regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL);
+          fprintf(logger, "%02X "BYTETOBINARYPATTERN" %02X%02X %02X%02X %02X%02X %04X %04X\n",
+            regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY);
         }
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
 
