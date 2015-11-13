@@ -115,6 +115,17 @@ int main(int argc, char **argv, char **env)
     char disas_out[256];
     int t_states, t_states2;
 
+    #define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
+    #define BYTETOBINARY(byte)  \
+    (byte & 0x80 ? 1 : 0), \
+    (byte & 0x40 ? 1 : 0), \
+    (byte & 0x20 ? 1 : 0), \
+    (byte & 0x10 ? 1 : 0), \
+    (byte & 0x08 ? 1 : 0), \
+    (byte & 0x04 ? 1 : 0), \
+    (byte & 0x02 ? 1 : 0), \
+    (byte & 0x01 ? 1 : 0)
+
     // Run simulation for NUM_CYCLES clock periods
     while (tb_sstep < NUM_STEPS)
     {
@@ -147,8 +158,8 @@ int main(int argc, char **argv, char **env)
           fprintf(logger, "%04X  ", regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, NULL);
           fprintf(logger, "%-16s  ", disas_out);
-          fprintf(logger, "%02X %02X %02X%02X %02X%02X %02X%02X\n",
-            regA, regF, regB, regC, regD, regE, regH, regL);
+          fprintf(logger, "%02X "BYTETOBINARYPATTERN" %02X%02X %02X%02X %02X%02X\n",
+            regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL);
         }
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
 
