@@ -115,16 +115,14 @@ int main(int argc, char **argv, char **env)
     char disas_out[256];
     int t_states, t_states2;
 
-    #define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
+    #define BYTETOBINARYPATTERN "%s%s%s%s%s%s"
     #define BYTETOBINARY(byte)  \
-    (byte & 0x80 ? 1 : 0), \
-    (byte & 0x40 ? 1 : 0), \
-    (byte & 0x20 ? 1 : 0), \
-    (byte & 0x10 ? 1 : 0), \
-    (byte & 0x08 ? 1 : 0), \
-    (byte & 0x04 ? 1 : 0), \
-    (byte & 0x02 ? 1 : 0), \
-    (byte & 0x01 ? 1 : 0)
+    (byte & 0x80 ? "S" : "."), \
+    (byte & 0x40 ? "Z" : "."), \
+    (byte & 0x10 ? "H" : "."), \
+    (byte & 0x04 ? "P" : "."), \
+    (byte & 0x02 ? "N" : "."), \
+    (byte & 0x01 ? "C" : ".")
 
     // Run simulation for NUM_CYCLES clock periods
     while (tb_sstep < NUM_STEPS)
@@ -156,13 +154,14 @@ int main(int argc, char **argv, char **env)
           vluint8_t regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
           vluint16_t regIX = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IX;
           vluint16_t regIY = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IY;
+          vluint8_t busD = top->v__DOT__z88_cdo;
 
           fprintf(logger, "%04X  ", regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte,
             /*regPC*/ top->ram_a, NULL);
           fprintf(logger, "%-16s  ", disas_out);
-          fprintf(logger, "%02X "BYTETOBINARYPATTERN" %02X%02X %02X%02X %02X%02X %04X %04X\n",
-            regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY);
+          fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
+            regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
         }
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
 
