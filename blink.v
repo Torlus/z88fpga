@@ -386,33 +386,24 @@ begin
     pm1s_set_req <= 1'b0;
     pm1s_set_req <= 1'b0;
     if (!hlt_n & !intb) begin
-      pm1s_clr_req <= 1'b1;
+      pm1s_clr_req <= 1'b1;   // Do Snooze
+      // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
+      // (Note : Register I is copied on A15-8 during Halt)
     end
     if (intb) begin
-      pm1s_set_req <= 1'b1;
+      pm1s_set_req <= 1'b1;   // Awake Z80 CPU
     end
   end
 end
 
 
-// Blink Heart
+// Register Writes
 always @(posedge mck)
 begin
   if (rin_n == 1'b0) begin
     com <= 8'h00;
     int1 <= 8'h00;
-    pm1s_clr_req <= 1'b0;
   end else begin
-    pm1s_clr_req <= 1'b0;
-    if (!hlt_n) begin
-      if (ca[15:8] != 8'h3F) begin
-        pm1s_clr_req <= 1'b1;
-      end else begin
-        // FIXME pm1s <= 1'b0;
-        // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
-        // (Note : Register I is copied on A15-8 during Halt)
-      end
-    end
     if (reg_wr) begin
       // IO register write
       case(ca[7:0])
