@@ -384,7 +384,7 @@ begin
     pm1s_clr_req <= 1'b0;
   end else begin
     pm1s_set_req <= 1'b0;
-    pm1s_set_req <= 1'b0;
+    pm1s_clr_req <= 1'b0;
     if (!hlt_n & !intb) begin
       pm1s_clr_req <= 1'b1;   // Do Snooze
       // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
