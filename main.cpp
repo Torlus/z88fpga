@@ -15,7 +15,7 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)( (491520 * 2) + 10 ))
+#define NUM_STEPS    ((vluint64_t)( (491520 * 200) + 10 ))
 // Half period (in ps) of a 9.8304 MHz clock
 #define STEP_PS      ((vluint64_t)5086)
 // 5ms clock period = 2,500,000,000 ps
@@ -39,7 +39,7 @@ vluint8_t RAM[RAM_SIZE];
 
 // Disassembly
 FILE *logger;
-// bool disas_rom, disas_ram;
+bool disas_rom, disas_ram;
 int bank;
 
 Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, Z80EX_BYTE bank) {
@@ -49,6 +49,14 @@ Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, Z80EX_BYTE bank) {
     return RAM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
   // fprintf(logger, "PC: Unexpected location %04X\n", addr);
   // return 0xFF;
+}
+Z80EX_BYTE disas_readbyte_top(Z80EX_WORD addr, Z80EX_BYTE unused) {
+  if (disas_rom)
+    return ROM[addr & (rom_size - 1)];
+  if (disas_ram)
+    return RAM[addr & (RAM_SIZE - 1)];
+  fprintf(logger, "PC: Unexpected location %04X\n", addr);
+  return 0xFF;
 }
 
 int main(int argc, char **argv, char **env)
@@ -175,6 +183,8 @@ int main(int argc, char **argv, char **env)
             }
           fprintf(logger, "%02X%04X  ", bnk, regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
+          // fprintf(logger, "%06X  ", top->rom_a);
+          // z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte_top, top->rom_a, 0);
           fprintf(logger, "%-16s  ", disas_out);
           fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
             regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
@@ -183,7 +193,7 @@ int main(int argc, char **argv, char **env)
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
-//          disas_rom = true; disas_ram = false;
+          disas_rom = true; disas_ram = false;
           top->rom_do = ROM[top->rom_a & (ROM_SIZE-1)];
         } else {
           top->rom_do = 0xFF;
@@ -191,7 +201,7 @@ int main(int argc, char **argv, char **env)
 
         // Simulate RAM behaviour
         if (!top->ram_oe_n && !top->ram_ce_n) {
-//          disas_rom = false; disas_ram = true;
+          disas_rom = false; disas_ram = true;
           top->ram_do = ROM[top->ram_a & (RAM_SIZE-1)];
         } else {
           top->ram_do = 0xFF;
