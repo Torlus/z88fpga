@@ -14,7 +14,7 @@
 #include "z80ex_common.h"
 
 /*callback that returns byte for a given adress*/
-typedef Z80EX_BYTE (*z80ex_dasm_readbyte_cb)(Z80EX_WORD addr, void *user_data);
+typedef Z80EX_BYTE (*z80ex_dasm_readbyte_cb)(Z80EX_WORD addr, Z80EX_BYTE bank);
 
 /*flags*/
 enum Z80EX_DASM_FLAGS {
@@ -41,7 +41,7 @@ user_data - will be passed to readbyte_cb callback
 returns: length of processed instruction in bytes
 */
 extern int z80ex_dasm(char *output, int output_size, unsigned flags, int *t_states, int *t_states2,
-	z80ex_dasm_readbyte_cb readbyte_cb, Z80EX_WORD addr, void *user_data);
+	z80ex_dasm_readbyte_cb readbyte_cb, Z80EX_WORD addr, Z80EX_BYTE bank);
 
 #ifdef __cplusplus
 // }
