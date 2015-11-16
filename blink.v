@@ -434,7 +434,8 @@ begin
         8'hB0: com <= cdi;
         8'hB1: int1 <= cdi;
         8'hB6: begin
-          if (ca[2]) begin
+          // ACK main interrupt acknowledge
+          if (cdi[2]) begin
             kbds_clr_req <= 1'b1;
           end
         end
