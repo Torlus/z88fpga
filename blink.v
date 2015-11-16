@@ -309,7 +309,7 @@ begin
   end
 end
 
-// INT7 (KWAIT) as a RS-latch
+// INT7 (KWAIT) as a RS latch
 reg             int7_val_req;
 wire            int7_val_ack;
 reg             int7_clr_req;
@@ -355,7 +355,7 @@ begin
   end
 end
 
-// PM1S as a RS-latch
+// PM1S as a RS latch
 reg             pm1s_set_req;
 wire            pm1s_set_ack;
 reg             pm1s_clr_req;
@@ -440,7 +440,7 @@ begin
   end
 end
 
-// Keyboard Status as a RS-latch
+// Keyboard Status as a RS latch
 reg             kbds_set_req;
 wire            kbds_set_ack;
 reg             kbds_clr_req;
