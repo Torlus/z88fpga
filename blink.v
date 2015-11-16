@@ -326,8 +326,7 @@ begin
         8'hB2: begin
           r_cdo <= kbd;
           if (int1[7]) begin
-            // If this is required, int1[7] should be a RS-latch
-            // int1[7] <= ~int1[7];    // clear Kwait
+            int1[7] <= ~int1[7];     // clear Kwait
             pm1s_clr_req2 <= 1'b1;   // Snooze
           end
         end

@@ -15,14 +15,9 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)( (491520 * 200) + 10 ))
+#define NUM_STEPS    ((vluint64_t)( (491520 * 2) + 10 ))
 // Half period (in ps) of a 9.8304 MHz clock
 #define STEP_PS      ((vluint64_t)5086)
-// 5ms clock period = 2,500,000,000 ps
-// So we will toggle the clock every 2,500,000,000 / 5086 = 491520 ticks
-// of the MCLK
-// (divided by 10 for debugging = 0.5ms)
-//#define CLK5MS_TICKS ((vluint64_t)49152)
 
 #define ROM_SIZE      (1<<19)
 #define RAM_SIZE      (1<<19)
@@ -30,7 +25,6 @@
 // Simulation steps (global)
 vluint64_t tb_sstep;
 vluint64_t tb_time;
-//vluint64_t clk5ms_ticks;
 
 Vz88* top;
 vluint8_t ROM[ROM_SIZE];
@@ -47,9 +41,8 @@ Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, Z80EX_BYTE bank) {
     return ROM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
   else
     return RAM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
-  // fprintf(logger, "PC: Unexpected location %04X\n", addr);
-  // return 0xFF;
 }
+
 Z80EX_BYTE disas_readbyte_top(Z80EX_WORD addr, Z80EX_BYTE unused) {
   if (disas_rom)
     return ROM[addr & (rom_size - 1)];
@@ -88,7 +81,6 @@ int main(int argc, char **argv, char **env)
     // Initialize simulation inputs
     top->reset_n = 0;
     top->clk = 1;
-    // top->clk5ms = 1;
 
     top->ram_do = 0;
     top->rom_do = 0;
@@ -98,8 +90,6 @@ int main(int argc, char **argv, char **env)
 
     tb_sstep = 0;  // Simulation steps (64 bits)
     tb_time = 0;  // Simulation time in ps (64 bits)
-
-    // clk5ms_ticks = 0;
 
     // Load the ROM file
     //FILE *rom = fopen("Z88UK400.rom","rb");
@@ -141,11 +131,6 @@ int main(int argc, char **argv, char **env)
         top->reset_n = (tb_sstep < (vluint64_t)24) ? 0 : 1;
         // Toggle clock
         top->clk = top->clk ^ 1;
-        // Generate the 5ms clock
-        //if (++clk5ms_ticks == CLK5MS_TICKS) {
-        //  top->clk5ms ^= 1;
-        //  clk5ms_ticks = 0;
-        //}
         // Evaluate verilated model
         top->eval();
 
@@ -183,8 +168,6 @@ int main(int argc, char **argv, char **env)
             }
           fprintf(logger, "%02X%04X  ", bnk, regPC);
           z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
-          // fprintf(logger, "%06X  ", top->rom_a);
-          // z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte_top, top->rom_a, 0);
           fprintf(logger, "%-16s  ", disas_out);
           fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
             regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
