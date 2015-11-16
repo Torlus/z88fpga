@@ -483,7 +483,7 @@ begin
     kbds_set_req <= 1'b0;
   end else begin
     kbds_set_req <= 1'b0;
-    if (kbd != 8'hFF) begin
+    if (kbd != 8'hFF & !ior_n) begin
       kbds_set_req <= 1'b1;
     end
   end
