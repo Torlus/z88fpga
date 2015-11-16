@@ -93,7 +93,7 @@ assign pm1 = (pm1s) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
 
 // General
 reg     [15:0]  tck;  // tick counter
-reg             pm1s; // Z80 clock switch
+wire            pm1s; // Z80 clock switch
 reg     [7:0]   r_cdo; // I/O Port read buffer
 
 // Common control register
@@ -113,13 +113,14 @@ reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
 reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
 
 // Interrupts
-reg     [7:0]   int1; // Interrupt control (WR)
+reg     [6:0]   int1; // Interrupt control (WR)
+wire            int7;
 // reg     [7:0]   sta;  // Interrupt status (RD)
 wire    [7:0]   sta;
 
 
 // Timer interrupts
-reg     [2:0]   tsta; // Timer interrupt status (RD)
+wire    [2:0]   tsta; // Timer interrupt status (RD)
 reg     [2:0]   tmk;  // Timer interrupt mask (WR)
 
 // Real Time Clock (RD)
@@ -228,9 +229,9 @@ end
 // - clr_req is controlled by the Register Write logic.
 // - the corresponding "acks" are controlled by the latch itself
 reg     [2:0]   tsta_set_req;
-reg     [2:0]   tsta_set_ack;
+wire    [2:0]   tsta_set_ack;
 reg     [2:0]   tsta_clr_req;
-reg     [2:0]   tsta_clr_ack;
+wire    [2:0]   tsta_clr_ack;
 
 slatch3 tsta0 (
   .clk(mck), .res_n(rin_n), .di(1'b0), .q(tsta[0]),
@@ -308,21 +309,37 @@ begin
   end
 end
 
+// INT7 (KWAIT) as a RS-latch
+reg             int7_val_req;
+wire            int7_val_ack;
+reg             int7_clr_req;
+wire            int7_clr_ack;
+
+slatch3 int7l (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(int7),
+  .req0(int7_val_req), .d0(cdi[7]),
+  .req1(int7_clr_req), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(int7_val_ack), .ack1(int7_clr_ack), .ack2()
+);
+
 // Register reads (r_cdo control)
 always @(posedge mck)
 begin
   if (!rin_n) begin
     r_cdo <= 8'd0;
     pm1s_clr_req2 <= 1'b0;
+    int7_clr_req <= 1'b0;
   end else begin
     pm1s_clr_req2 <= 1'b0;
+    int7_clr_req <= 1'b0;
     if (reg_rd) begin // IO Register Read
       case(ca[7:0])
         8'hB1: r_cdo <= sta;
         8'hB2: begin
           r_cdo <= kbd;
-          if (int1[7]) begin
-            int1[7] <= ~int1[7];     // clear Kwait
+          if (int7) begin
+            int7_clr_req <= 1'b1;     // clear Kwait
             pm1s_clr_req2 <= 1'b1;   // Snooze
           end
         end
@@ -340,47 +357,24 @@ end
 
 // PM1S as a RS-latch
 reg             pm1s_set_req;
-reg             pm1s_set_ack;
+wire            pm1s_set_ack;
 reg             pm1s_clr_req;
-reg             pm1s_clr_ack;
+wire            pm1s_clr_ack;
 reg             pm1s_clr_req2;
-reg             pm1s_clr_ack2;
+wire            pm1s_clr_ack2;
 
-always @(posedge mck)
-begin
-  if (!rin_n) begin
-    pm1s <= 1'b1;
-    pm1s_set_ack <= 1'b0;
-    pm1s_clr_ack <= 1'b0;
-    pm1s_clr_ack2 <= 1'b0;
-  end else begin
-    if (!pm1s_set_req) begin
-      pm1s_set_ack <= 1'b0;
-    end
-    if (!pm1s_clr_req) begin
-      pm1s_clr_ack <= 1'b0;
-    end
-    if (!pm1s_clr_req2) begin
-      pm1s_clr_ack2 <= 1'b0;
-    end
-
-    if (pm1s_set_req & !pm1s_set_ack) begin
-      pm1s_set_ack <= 1'b1;
-      pm1s <= 1'b1;
-    end else if (pm1s_clr_req & !pm1s_clr_ack) begin
-      pm1s_clr_ack <= 1'b1;
-      pm1s <= 1'b0;
-    end else if (pm1s_clr_req2 & !pm1s_clr_ack2) begin
-      pm1s_clr_ack2 <= 1'b1;
-      pm1s <= 1'b0;
-    end
-  end
-end
+slatch3 pm1sl (
+  .clk(mck), .res_n(rin_n), .di(1'b1), .q(pm1s),
+  .req0(pm1s_set_req), .d0(1'b1),
+  .req1(pm1s_clr_req), .d1(1'b0),
+  .req2(pm1s_clr_req2), .d2(1'b0),
+  .ack0(pm1s_set_ack), .ack1(pm1s_clr_ack), .ack2(pm1s_clr_ack2)
+);
 
 assign sta = { 5'b00000, kbd_int, rtc_int, 1'b0};
 
 // Keyboard Status
-reg kbds;
+wire            kbds;
 
 // Interrupts
 wire rtc_int;
@@ -420,15 +414,20 @@ always @(posedge mck)
 begin
   if (!rin_n) begin
     com <= 8'h00;
-    int1 <= 8'h00;
+    int1 <= 7'h00;
     kbds_clr_req <= 1'b0;
+    int7_val_req <= 1'b0;
   end else begin
     kbds_clr_req <= 1'b0;
+    int7_val_req <= 1'b0;
     if (reg_wr) begin
       // IO register write
       case(ca[7:0])
         8'hB0: com <= cdi;
-        8'hB1: int1 <= cdi;
+        8'hB1: begin
+          int1 <= cdi[6:0];
+          int7_val_req <= 1'b1;
+        end
         8'hB6: begin
           // ACK main interrupt acknowledge
           if (cdi[2]) begin
@@ -443,33 +442,18 @@ end
 
 // Keyboard Status as a RS-latch
 reg             kbds_set_req;
-reg             kbds_set_ack;
+wire            kbds_set_ack;
 reg             kbds_clr_req;
-reg             kbds_clr_ack;
+wire            kbds_clr_ack;
 
-always @(posedge mck)
-begin
-  if (!rin_n) begin
-    kbds <= 1'b0;
-    kbds_set_ack <= 1'b0;
-    kbds_clr_ack <= 1'b0;
-  end else begin
-    if (!kbds_set_req) begin
-      kbds_set_ack <= 1'b0;
-    end
-    if (!kbds_clr_req) begin
-      kbds_clr_ack <= 1'b0;
-    end
+slatch3 kbdsl (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(kbds),
+  .req0(kbds_set_req), .d0(1'b1),
+  .req1(kbds_clr_req), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(kbds_set_ack), .ack1(kbds_clr_ack), .ack2()
+);
 
-    if (kbds_set_req & !kbds_set_ack) begin
-      kbds_set_ack <= 1'b1;
-      kbds <= 1'b1;
-    end else if (kbds_clr_req & !kbds_clr_ack) begin
-      kbds_clr_ack <= 1'b1;
-      kbds <= 1'b0;
-    end
-  end
-end
 
 // Keyboard Status change
 // TODO (?) Debounce
