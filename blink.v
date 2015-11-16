@@ -4,7 +4,7 @@ module blink (
   intb_n, nmib_n, roe_n,
   // Inputs
   ca, crd_n, cdi, mck, sck, rin_n, hlt_n, mrq_n, ior_n, cm1_n, kbmat
-  );
+);
 
 // Clocks
 input           mck;      // 9.83MHz Master Clock
@@ -232,31 +232,27 @@ reg     [2:0]   tsta_set_ack;
 reg     [2:0]   tsta_clr_req;
 reg     [2:0]   tsta_clr_ack;
 
-always @(posedge mck)
-begin
-  if (!rin_n) begin
-    tsta <= 3'd0;
-    tsta_set_ack <= 3'd0;
-    tsta_clr_ack <= 3'd0;
-  end else begin
-    for(i = 0; i < 3; i = i + 1) begin
-      if (!tsta_set_req[i]) begin
-        tsta_set_ack[i] <= 1'b0;
-      end
-      if (!tsta_clr_req[i]) begin
-        tsta_clr_ack[i] <= 1'b0;
-      end
-      if (tsta_set_req[i] & !tsta_set_ack[i]) begin
-        tsta_set_ack[i] <= 1'b1;
-        tsta[i] <= 1'b1;
-      end else if (tsta_clr_req[i] & !tsta_clr_ack[i]) begin
-        tsta_clr_ack[i] <= 1'b1;
-        tsta[i] <= 1'b0;
-      end
-    end
-  end
-end
-
+slatch3 tsta0 (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(tsta[0]),
+  .req0(tsta_set_req[0]), .d0(1'b1),
+  .req1(tsta_clr_req[0]), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(tsta_set_ack[0]), .ack1(tsta_clr_ack[0]), .ack2()
+);
+slatch3 tsta1 (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(tsta[1]),
+  .req0(tsta_set_req[1]), .d0(1'b1),
+  .req1(tsta_clr_req[1]), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(tsta_set_ack[1]), .ack1(tsta_clr_ack[1]), .ack2()
+);
+slatch3 tsta2 (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(tsta[2]),
+  .req0(tsta_set_req[2]), .d0(1'b1),
+  .req1(tsta_clr_req[2]), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(tsta_set_ack[2]), .ack1(tsta_clr_ack[2]), .ack2()
+);
 
 // RTC: Tick counter and interrupts
 always @(posedge mck)
