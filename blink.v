@@ -3,7 +3,7 @@ module blink (
   rout_n, cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
   intb_n, nmib_n, roe_n,
   // Inputs
-  ca, crd_n, cdi, mck, sck, rin_n, hlt_n, mrq_n, ior_n, cm1_n, kbmat
+  ca, crd_n, cdi, mck, sck, rin_n, flp, hlt_n, mrq_n, ior_n, cm1_n, kbmat
 );
 
 // Clocks
@@ -14,6 +14,9 @@ output          pm1;      // Z80 clock driven by blink
 // Reset
 input           rin_n;    // Reset button
 output          rout_n;   // Z80 reset
+
+// Flap
+input           flp;      // Flap switch (high if opened for card insertion or hard reset)
 
 // Logical memory (16 bits Z80 address bus)
 input   [15:0]  ca;       // Z80 address bus
@@ -45,7 +48,6 @@ output          intb_n;   // INT
 
 // Cards, EPROM programmer, Battery and Speaker
 // input           btl_n;    // Batt Low (<4.2V)
-// input           flp;      // Flap open of slot connector
 // input           sns_n;    // Sens Line for card insertion/removal and Batt <3.2V (induce NMI>>HLT)
 // output          pgmb_n;   // PGM
 // output          vpon;     // VPP
@@ -176,7 +178,7 @@ assign reg_wr = !ior_n & crd_n;
 
 integer i;
 
-// FIXME
+// NMI low only on power failure or card insertion (not implemented)
 assign nmib_n = 1'b1;
 
 // LCD Registers
@@ -258,9 +260,10 @@ slatch3 tsta2 (
 // RTC: Tick counter and interrupts
 always @(posedge mck)
 begin
-  if (!rin_n | com[4]) begin
+  if ((!rin_n & flp) | com[4]) begin
+    // Timer is reset on hard reset or when RESTIM
     tck <= 16'd0;
-    tim0 <= 8'd0;        // in fact timer is reset only on hard reset (flap opened TBD)
+    tim0 <= 8'd0;
     tim1 <= 6'd0;
     timm <= 21'd0;
     tsta_set_req <= 3'd0;
@@ -335,20 +338,28 @@ begin
     int7_clr_req <= 1'b0;
     if (reg_rd) begin // IO Register Read
       case(ca[7:0])
+        // STA : interrupt status
         8'hB1: r_cdo <= sta;
+        // KBD : key pressed, reading KBD when KWAIT set will snooze
         8'hB2: begin
           r_cdo <= kbd;
           if (int7) begin
-            int7_clr_req <= 1'b1;     // clear Kwait
+            int7_clr_req <= 1'b1;    // clear Kwait
             pm1s_clr_req2 <= 1'b1;   // Snooze
           end
         end
+        // TSTA : Timer status
         8'hB5: r_cdo <= {5'b00000, tsta};
-        8'hD0: r_cdo <= tim0;                   // 5ms tick
-        8'hD1: r_cdo <= {2'b00, tim1};          // seconds
-        8'hD2: r_cdo <= timm[7:0];              // minutes
-        8'hD3: r_cdo <= timm[15:8];             // 256 minutes
-        8'hD4: r_cdo <= {3'b000, timm[20:16]};  // 64K minutes
+        // TIM0 : 5ms tick counter
+        8'hD0: r_cdo <= tim0;
+        // TIM1 : seconds counter
+        8'hD1: r_cdo <= {2'b00, tim1};
+        // TIM2 : minutes counter
+        8'hD2: r_cdo <= timm[7:0];
+        // TIM3 : 256 minutes counter
+        8'hD3: r_cdo <= timm[15:8];
+        // TIM4 : 64K minutes counter
+        8'hD4: r_cdo <= {3'b000, timm[20:16]};
         default: ;
       endcase
     end
@@ -371,10 +382,13 @@ slatch3 pm1sl (
   .ack0(pm1s_set_ack), .ack1(pm1s_clr_ack), .ack2(pm1s_clr_ack2)
 );
 
-assign sta = { 5'b00000, kbd_int, rtc_int, 1'b0};
+assign sta = {flp, 1'b0, flp_int, 2'b00, kbd_int, rtc_int, 1'b0};
 
 // Keyboard Status
 wire            kbds;
+
+// Flap Status;
+wire            flps;
 
 // Interrupts
 wire rtc_int;
@@ -383,12 +397,15 @@ assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
 wire kbd_int;
 assign kbd_int = (kbds) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
 
+wire flp_int;
+assign flp_int = (flps) ? 1'b1 : 1'b0; // Flap open fires an interrupt
+
 // Interrupt signal
 wire intb;
 assign intb_n = !intb;
 wire intbw;
 assign intbw = (rtc_int & int1[0] & int1[1])
-  | (kbd_int & int1[0] & int1[2]);
+  | (kbd_int & int1[0] & int1[2]) | (flp_int & int1[0] & int1[5]);
 
 // Intb as a RS latch
 reg             intb_set_req;
@@ -414,7 +431,7 @@ begin
     intb_set_req <= 1'b0;
     intb_clr_req <= 1'b0;
     if (intbw) begin
-      // Fires an interrupt if RTC of KBD request
+      // Fires an interrupt if RTC, KBD or FLP request
       intb_set_req <= 1'b1;
     end
     if (!ior_n & !cm1_n) begin
@@ -451,9 +468,11 @@ begin
     com <= 8'h00;
     int1 <= 7'h00;
     kbds_clr_req <= 1'b0;
+    flap_clr_req <= 1'b0;
     int7_val_req <= 1'b0;
   end else begin
     kbds_clr_req <= 1'b0;
+    flap_clr_req <= 1'b0;
     int7_val_req <= 1'b0;
     if (reg_wr) begin
       // IO register write
@@ -466,7 +485,10 @@ begin
         8'hB6: begin
           // ACK main interrupt acknowledge
           if (cdi[2]) begin
-            kbds_clr_req <= 1'b1;
+            kbds_clr_req <= 1'b1; // ack. keyboard int.
+          end
+          if (cdi[5]) begin
+            flap_clr_req <= 1'b1; // ack. flap int.
           end
         end
         default: ;
@@ -490,18 +512,37 @@ slatch3 kbdsl (
 );
 
 
-// Keyboard Status change
+// Keyboard and Flap Status change
 // TODO (?) Debounce
 always @(posedge mck)
 begin
   if (!rin_n) begin
     kbds_set_req <= 1'b0;
+    flap_set_req <= 1'b0;
   end else begin
     kbds_set_req <= 1'b0;
+    flap_set_req <= 1'b0;
     if (kbd != 8'hFF & !ior_n) begin
       kbds_set_req <= 1'b1;
     end
+    if (flp) begin
+      flap_set_req <= 1'b1;
+    end
   end
 end
+
+// Flap as a RS latch
+reg             flap_set_req;
+wire            flap_set_ack;
+reg             flap_clr_req;
+wire            flap_clr_ack;
+
+slatch3 flapl (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(flps),
+  .req0(flap_set_req), .d0(1'b1),
+  .req1(flap_clr_req), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(flap_set_ack), .ack1(flap_clr_ack), .ack2()
+);
 
 endmodule

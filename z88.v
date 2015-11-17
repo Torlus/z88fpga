@@ -7,12 +7,14 @@ module z88 (
   clk, reset_n,
   ps2clk, ps2dat,
   ram_di,
-  rom_do
+  rom_do,
+  flap
 );
 
-// Clocks and Reset
+// Clocks, Reset switch, Flap switch
 input           clk;
 input           reset_n;
+input           flap;  // normaly closed =0, open =1
 
 // PS/2
 input           ps2clk;
@@ -45,6 +47,7 @@ wire            z88_iorq_n;
 wire            z88_rd_n;
 wire            z88_halt_n;
 wire            z88_reset_n;
+wire            z88_flap;
 wire            z88_int_n;
 wire            z88_nmi_n;
 wire            z88_busrq_n;
@@ -96,6 +99,7 @@ assign z88_reset_n = reset_n;
 blink theblink (
   .rout_n(z88_rout_n),
   .rin_n(z88_reset_n),
+  .flp(z88_flap),
   .mck(z88_mck),
   .sck(z88_sck),
   .pm1(z88_pm1),
