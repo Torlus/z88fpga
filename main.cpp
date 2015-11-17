@@ -152,8 +152,12 @@ int main(int argc, char **argv, char **env)
           vluint8_t busD = top->v__DOT__z88_cdo;
           vluint8_t seg0 = (regPC>>13 & 0x07);
           vluint8_t seg = (regPC>>14 & 0x03);
+          vluint8_t com = top->v__DOT__theblink__DOT__com;
           vluint8_t bnk;
-            if (seg0 == 0x00) {bnk = 0x00;}
+            if (!seg0) {
+              if (com & 0x04) {bnk = 0x20;}
+              else {bnk = 0X00;}
+            }
             else{
               switch(seg){
                 case 0x00:{bnk = top->v__DOT__theblink__DOT__sr0;
