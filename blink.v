@@ -384,10 +384,43 @@ wire kbd_int;
 assign kbd_int = (kbds) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
 
 // Interrupt signal
-wire intb;
-assign intb = (rtc_int & int1[0] & int1[1])
-  | (kbd_int & int1[0] & int1[2]);
+reg intb;
 assign intb_n = !intb;
+wire intbw;
+assign intbw = (rtc_int & int1[0] & int1[1])
+  | (kbd_int & int1[0] & int1[2]);
+
+// Intb as a RS latch
+reg             intb_set_req;
+wire            intb_set_ack;
+reg             intb_clr_req;
+wire            intb_clr_ack;
+
+slatch3 intbl (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(intb),
+  .req0(intb_set_req), .d0(1'b1),
+  .req1(intb_clr_req), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(intb_set_ack), .ack1(intb_clr_ack), .ack2()
+);
+
+// Do Interrupt
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    intb_set_req <= 1'b0;
+  end else begin
+    intb_set_req <= 1'b0;
+    if (intbw) begin
+      // Fires an interrupt if RTC of KBD request
+      intb_set_req <= 1'b1;
+    end
+    if (!ior_n & !cm1_n) begin
+      // Z80 has entered INT and acknowledged it
+      intb_clr_req <= 1'b1;
+    end
+  end
+end
 
 always @(posedge mck)
 begin
