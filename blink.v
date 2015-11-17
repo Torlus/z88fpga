@@ -384,7 +384,7 @@ wire kbd_int;
 assign kbd_int = (kbds) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
 
 // Interrupt signal
-reg intb;
+wire intb;
 assign intb_n = !intb;
 wire intbw;
 assign intbw = (rtc_int & int1[0] & int1[1])
@@ -409,8 +409,10 @@ always @(posedge mck)
 begin
   if (!rin_n) begin
     intb_set_req <= 1'b0;
+    intb_clr_req <= 1'b0;
   end else begin
     intb_set_req <= 1'b0;
+    intb_clr_req <= 1'b0;
     if (intbw) begin
       // Fires an interrupt if RTC of KBD request
       intb_set_req <= 1'b1;
