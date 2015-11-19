@@ -124,6 +124,7 @@ int main(int argc, char **argv, char **env)
     bool first = false;
     int opcn = 0;
     int opc [5];
+    vluint64_t opctime = 0;
     char disas_out[256];
     int t_states, t_states2;
     int bnk;
@@ -169,6 +170,7 @@ int main(int argc, char **argv, char **env)
               first = false;
             }
             else{
+              fprintf(logger, "%6lu  ", opctime / 1000000);
               fprintf(logger, "%02X%04X  ", bnk, regPC);
               GrabBytes(regPC, opc[0], opc[1], opc[2], opc[3]);
               z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
@@ -180,6 +182,7 @@ int main(int argc, char **argv, char **env)
               fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
                regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
               opcn = 0;
+              opctime = tb_time;
             }
           }
           first = true;
