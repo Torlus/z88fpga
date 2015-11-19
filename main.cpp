@@ -34,13 +34,21 @@ vluint8_t RAM[RAM_SIZE];
 // Disassembly
 FILE *logger;
 bool disas_rom, disas_ram;
-int bank;
+int whichb;
+int opcode[4];
+int rrPC;
+
+void GrabBytes(int rPC, int Byte0, int Byte1, int Byte2, int Byte3) {
+rrPC = rPC;
+opcode[0] = Byte0;
+opcode[1] = Byte1;
+opcode[2] = Byte2;
+opcode[3] = Byte3;
+}
 
 Z80EX_BYTE disas_readbyte(Z80EX_WORD addr, Z80EX_BYTE bank) {
-  if (!(bank & 0x20))
-    return ROM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
-  else
-    return RAM[((bank & 0x1F) * 0x4000 | (addr & 0x3FFF))];
+  whichb = addr - rrPC;
+  return opcode[whichb];
 }
 
 Z80EX_BYTE disas_readbyte_top(Z80EX_WORD addr, Z80EX_BYTE unused) {
@@ -111,9 +119,29 @@ int main(int argc, char **argv, char **env)
 
     // For disassembly
     logger = fopen("z88_dasm.log", "wb");
-    int m1_prev = 1;
+    bool m1_prev = true;
+    bool mreq_prev = true;
+    bool first = false;
+    int opcn = 0;
+    int opc [5];
     char disas_out[256];
     int t_states, t_states2;
+    int bnk;
+    int regA;
+    int regF;
+    int regB;
+    int regC;
+    int regD;
+    int regE;
+    int regH;
+    int regL;
+    int seg0;
+    int seg;
+    int com;
+    int regPC;
+    int regSP;
+    int regIX;
+    int regIY;
 
     #define BYTETOBINARYPATTERN "%s%s%s%s%s%s"
     #define BYTETOBINARY(byte)  \
@@ -136,24 +164,43 @@ int main(int argc, char **argv, char **env)
 
         // Disassembly
         if (!top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && m1_prev) {
-          vluint16_t regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
-          vluint16_t regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
-          vluint8_t regA = top->v__DOT__z80__DOT__i_tv80_core__DOT__ACC;
-          vluint8_t regI = top->v__DOT__z80__DOT__i_tv80_core__DOT__I;
-          vluint8_t regF = top->v__DOT__z80__DOT__i_tv80_core__DOT__F;
-          vluint8_t regB = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__B;
-          vluint8_t regC = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__C;
-          vluint8_t regD = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__D;
-          vluint8_t regE = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__E;
-          vluint8_t regH = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__H;
-          vluint8_t regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
-          vluint16_t regIX = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IX;
-          vluint16_t regIY = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IY;
-          vluint8_t busD = top->v__DOT__z88_cdo;
-          vluint8_t seg0 = (regPC>>13 & 0x07);
-          vluint8_t seg = (regPC>>14 & 0x03);
-          vluint8_t com = top->v__DOT__theblink__DOT__com;
-          vluint8_t bnk;
+          if (first) {
+            if (opcn == 1 && (opc[0] == 0xCB || opc[0] == 0xED || opc[0] == 0xDD || opc[0] == 0xFD)){
+              first = false;
+            }
+            else{
+              fprintf(logger, "%02X%04X  ", bnk, regPC);
+              GrabBytes(regPC, opc[0], opc[1], opc[2], opc[3]);
+              z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
+              fprintf(logger, "%-16s  ", disas_out);
+              //for (int i = 0; i <= opcn; ++i){
+              //  fprintf(logger, "%02X ", opc[i]);
+              //}
+              //fprintf (logger, "\n", NULL);
+              fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
+               regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
+              opcn = 0;
+            }
+          }
+          first = true;
+          opc[opcn] = top->v__DOT__z88_cdo;
+          ++opcn;
+          regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
+          regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
+          regA = top->v__DOT__z80__DOT__i_tv80_core__DOT__ACC;
+          regF = top->v__DOT__z80__DOT__i_tv80_core__DOT__F;
+          regB = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__B;
+          regC = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__C;
+          regD = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__D;
+          regE = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__E;
+          regH = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__H;
+          regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
+          regIX = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IX;
+          regIY = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IY;
+          seg0 = (regPC>>13 & 0x07);
+          seg = (regPC>>14 & 0x03);
+          com = top->v__DOT__theblink__DOT__com;
+          // vluint8_t bnk;
             if (!seg0) {
               if (com & 0x04) {bnk = 0x20;}
               else {bnk = 0X00;}
@@ -170,13 +217,15 @@ int main(int argc, char **argv, char **env)
                 break;}
               }
             }
-          fprintf(logger, "%02X%04X  ", bnk, regPC);
-          z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
-          fprintf(logger, "%-16s  ", disas_out);
-          fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
-            regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
         }
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
+
+        if (top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && mreq_prev) {
+          opc[opcn] = top->v__DOT__z88_cdo;
+          ++opcn;
+        }
+        mreq_prev = top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
+
 
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
