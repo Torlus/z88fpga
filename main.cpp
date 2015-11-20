@@ -22,9 +22,13 @@
 #define ROM_SIZE      (1<<19)
 #define RAM_SIZE      (1<<19)
 
+#define TIME_SPLIT    ((vluint64_t)1000000000)
+
 // Simulation steps (global)
 vluint64_t tb_sstep;
 vluint64_t tb_time;
+vluint64_t tb_time_split;
+
 
 Vz88* top;
 vluint8_t ROM[ROM_SIZE];
@@ -98,6 +102,7 @@ int main(int argc, char **argv, char **env)
 
     tb_sstep = 0;  // Simulation steps (64 bits)
     tb_time = 0;  // Simulation time in ps (64 bits)
+    tb_time_split = 0;
 
     // Load the ROM file
     //FILE *rom = fopen("Z88UK400.rom","rb");
@@ -254,8 +259,9 @@ int main(int argc, char **argv, char **env)
         // Dump signals into VCD file
         if (tfp)
         {
-            if (0)
+            if ((TIME_SPLIT > 0) && (tb_time - tb_time_split >= TIME_SPLIT))
             {
+                tb_time_split = tb_time;
                 // New VCD file
                 tfp->close();
                 sprintf(file_name, "z88_%04d.vcd", trc_idx++);
