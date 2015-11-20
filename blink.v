@@ -357,6 +357,8 @@ begin
         8'hD3: r_cdo <= timm[15:8];
         // TIM4 : 64K minutes counter
         8'hD4: r_cdo <= {3'b000, timm[20:16]};
+        // UIT : UART interrupt status (required but not implemented)
+        8'hE5: r_cdo <= 8'h0;
         default: ;
       endcase
     end
@@ -379,7 +381,7 @@ slatch3 pm1sl (
   .ack0(pm1s_set_ack), .ack1(pm1s_clr_ack), .ack2(pm1s_clr_ack2)
 );
 
-assign sta = {flp, 1'b0, flp_int, 2'b00, kbd_int, rtc_int, 1'b0};
+assign sta = {flp, 1'b0, flp_int, 2'b00, kbd_int, 1'b0, rtc_int};
 
 // Keyboard Status
 wire            kbds;
