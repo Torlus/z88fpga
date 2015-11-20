@@ -15,7 +15,7 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)( (491520 * 2) + 10 ))
+#define NUM_STEPS    ((vluint64_t)( (491520 * 20) + 10 ))
 // Half period (in ps) of a 9.8304 MHz clock
 #define STEP_PS      ((vluint64_t)5086)
 
@@ -246,7 +246,7 @@ int main(int argc, char **argv, char **env)
         // Simulate RAM behaviour
         if (!top->ram_oe_n && !top->ram_ce_n) {
           disas_rom = false; disas_ram = true;
-          top->ram_do = ROM[top->ram_a & (RAM_SIZE-1)];
+          top->ram_do = RAM[top->ram_a & (RAM_SIZE-1)];
         } else {
           top->ram_do = 0xFF;
         }
