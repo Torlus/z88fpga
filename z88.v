@@ -45,7 +45,6 @@ output  [3:0]   vram_wp_di;
 output  [13:0]  vram_rp_a;
 input   [3:0]   vram_rp_do;
 
-
 // Z80
 wire    [7:0]   z80_do;
 
@@ -77,6 +76,12 @@ wire            z88_wrb_n;
 wire            z88_rin_n;
 wire            z88_rout_n;
 wire    [63:0]  z88_kbmat;
+wire            z88_lcdon;
+wire    [12:0]  z88_pb0;
+wire    [9:0]   z88_pb1;
+wire    [8:0]   z88_pb2;
+wire    [10:0]  z88_pb3;
+wire    [10:0]  z88_sbr;
 
 // Clocks
 assign z88_mck = clk;
@@ -95,10 +100,10 @@ tv80s z80 (
   .dout(z80_do),
   .reset_n(z88_rout_n),
   .clk(clk),
-  .wait_n(1'b1),                // not wired
+  .wait_n(1'b1),            // not wired
   .int_n(z88_int_n),
   .nmi_n(z88_nmi_n),
-  .busrq_n(1'b1),               // not wired
+  .busrq_n(1'b1),           // not wired
   .di(z88_cdo),
   .cen(z88_pm1)
 );
@@ -133,7 +138,34 @@ blink theblink (
   .se1_n(z88_se1_n),
   .se2_n(z88_se2_n),
   .se3_n(z88_se3_n),
-  .kbmat(z88_kbmat)
+  .kbmat(z88_kbmat),
+  .lcdon(z88_lcdon),
+  .pb0w(z88_pb0),
+  .pb1w(z88_pb1),
+  .pb2w(z88_pb2),
+  .pb3w(z88_pb3),
+  .sbrw(z88_sbr)
+);
+
+// Screen instance
+screen thescreen (
+  .mck(z88_mck),
+  .rin_n(z88_reset_n),
+  .lcdon(z88_lcdon),
+  .cdi(z88_cdi),
+  .mrq_n(z88_mreq_n),
+  .pb0(z88_pb0),
+  .pb1(z88_pb1),
+  .pb2(z88_pb2),
+  .pb3(z88_pb3),
+  .sbr(z88_sbr),
+  .ma(z88_ma),
+  .roe_n(z88_roe_n),
+  .ipce_n(z88_ipce_n),
+  .irce_n(z88_irce_n),
+  .vram_a(vram_wp_a),
+  .vram_do(vram_wp_di),
+  .vram_we(vram_wp_we)
 );
 
 // Internal RAM (Slot 0)

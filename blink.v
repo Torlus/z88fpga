@@ -2,6 +2,7 @@ module blink (
   // Outputs
   rout_n, cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
   intb_n, nmib_n, roe_n,
+  lcdon, pb0w, pb1w, pb2w, pb3w, sbrw, 
   // Inputs
   ca, crd_n, cdi, mck, sck, rin_n, flp, hlt_n, mrq_n, ior_n, cm1_n, kbmat
 );
@@ -69,10 +70,18 @@ output          intb_n;   // INT
 // Keyboard
 input           kbmat;
 
+// Screen
+output          lcdon;
+output  [12:0]  pb0w;
+output  [9:0]   pb1w;
+output  [8:0]   pb2w;
+output  [10:0]  pb3w;
+output  [10:0]  sbrw;
+
 // Reset
 assign rout_n = rin_n;
 
-
+// Z80 Clock (PM1)
 reg   [1:0]   z80_clkcnt;
 reg           z80_clk;
 always @(posedge mck)
@@ -90,7 +99,6 @@ begin
   end
 end
 
-// Clocks
 assign pm1 = (pm1s) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
 
 // General
@@ -107,12 +115,26 @@ reg     [7:0]   sr1;
 reg     [7:0]   sr2;
 reg     [7:0]   sr3;
 
-// Display (WR only)
+// Screen
 reg     [12:0]  pb0;  // Lores0 (RAM, 64 char, 512B)
 reg     [9:0]   pb1;  // Lores1 (ROM, 448 char, 3.5K)
 reg     [8:0]   pb2;  // Hires0 (RAM, 768 char, 6K)
 reg     [10:0]  pb3;  // Hires1 (ROM, 256 char, 2K)
 reg     [10:0]  sbr;  // Screen Base File (RAM, 128 attr*8, 2K)
+
+wire            lcdon;
+wire    [12:0]  pb0w;
+wire    [9:0]   pb1w;
+wire    [8:0]   pb2w;
+wire    [10:0]  pb3w;
+wire    [10:0]  sbrw;
+
+assign  lcdon = com[0];
+assign  pb0w = pb0;
+assign  pb1w = pb1;
+assign  pb2w = pb2;
+assign  pb3w = pb3;
+assign  sbrw = sbr;
 
 // Interrupts
 reg     [6:0]   int1; // Interrupt control (WR)

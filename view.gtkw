@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.65 (w)1999-2015 BSI
-[*] Thu Nov 12 17:08:36 2015
+[*] Sat Nov 21 10:49:21 2015
 [*]
-[dumpfile] "/Users/thierrypeycru/Documents/Z88/z88fpga/z88_0000.vcd"
-[dumpfile_mtime] "Thu Nov 12 16:48:37 2015"
-[dumpfile_size] 46924828
+[dumpfile] "/Users/thierrypeycru/Documents/Z88/z88fpga/z88_0001.vcd"
+[dumpfile_mtime] "Sat Nov 21 10:45:29 2015"
+[dumpfile_size] 8432919
 [savefile] "/Users/thierrypeycru/Documents/Z88/z88fpga/view.gtkw"
-[timestart] 0
-[size] 1440 900
-[pos] -1 -24
-*-17.000000 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 1159944000
+[size] 1440 791
+[pos] -1 -1
+*-17.000000 1159963000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.v.
 [treeopen] TOP.v.z80.
 [sst_width] 193
 [signals_width] 217
 [sst_expanded] 1
-[sst_vpaned_height] 648
+[sst_vpaned_height] 216
 @200
 -clock & reset
 @28
@@ -54,21 +54,25 @@ TOP.v.z80.nmi_n
 TOP.v.z80.int_n
 @200
 -Blink
-@22
-TOP.v.theblink.com[7:0]
-TOP.v.theblink.int1[7:0]
-TOP.v.theblink.sta[7:0]
-TOP.v.theblink.tim0[7:0]
-TOP.v.theblink.tim1[5:0]
-@29
-TOP.v.theblink.tmk[2:0]
 @28
+TOP.v.theblink.int1[6:0]
+TOP.v.theblink.com[7:0]
+TOP.v.theblink.sta[7:0]
+@23
+TOP.v.theblink.tim0[7:0]
+@22
+TOP.v.theblink.tim1[5:0]
+@28
+TOP.v.theblink.tmk[2:0]
 TOP.v.theblink.tsta[2:0]
-TOP.v.theblink.intb_n
 @22
 TOP.v.theblink.sr0[7:0]
 TOP.v.theblink.sr1[7:0]
 TOP.v.theblink.sr2[7:0]
 TOP.v.theblink.sr3[7:0]
+@200
+-Screen
+@28
+TOP.v.thescreen.sclk
 [pattern_trace] 1
 [pattern_trace] 0

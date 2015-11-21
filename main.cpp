@@ -15,7 +15,7 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)( (491520 * 20) + 10 ))
+#define NUM_STEPS    ((vluint64_t)( (491520 * 4) + 10 ))
 // Half period (in ps) of a 9.8304 MHz clock
 #define STEP_PS      ((vluint64_t)5086)
 
