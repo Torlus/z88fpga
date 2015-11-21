@@ -21,6 +21,7 @@
 
 #define ROM_SIZE      (1<<19)
 #define RAM_SIZE      (1<<19)
+#define VRAM_SIZE     (1<<14)
 
 #define TIME_SPLIT    ((vluint64_t)1000000000)
 
@@ -34,6 +35,7 @@ Vz88* top;
 vluint8_t ROM[ROM_SIZE];
 size_t rom_size;
 vluint8_t RAM[RAM_SIZE];
+vluint8_t VRAM[VRAM_SIZE];
 
 // Disassembly
 FILE *logger;
@@ -254,6 +256,13 @@ int main(int argc, char **argv, char **env)
           RAM[top->ram_a & (RAM_SIZE-1)] = top->ram_di;
         }
 
+        // Simulate VRAM behaviour
+        if (top->clk) {
+          top->vram_rp_do = VRAM[top->vram_rp_a & (VRAM_SIZE-1)] & 0x0f;
+          if (top->vram_wp_we) {
+            VRAM[top->vram_wp_a & (VRAM_SIZE-1)] = (top->vram_wp_di & 0x0f);
+          }
+        }
 
 #if VM_TRACE
         // Dump signals into VCD file

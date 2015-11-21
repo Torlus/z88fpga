@@ -1,13 +1,16 @@
 module z88 (
   // Outputs
-  ram_a, ram_do, ram_ce_n, ram_oe_n, ram_we_n,
+  ram_a, ram_di, ram_ce_n, ram_oe_n, ram_we_n,
   rom_a, rom_ce_n, rom_oe_n,
+  vram_wp_a, vram_wp_we, vram_wp_di,
+  vram_rp_a,
 
   // Inputs
   clk, reset_n,
   ps2clk, ps2dat,
-  ram_di,
+  ram_do,
   rom_do,
+  vram_rp_do,
   flap
 );
 
@@ -33,6 +36,15 @@ output  [18:0]  rom_a;
 input   [7:0]   rom_do;
 output          rom_ce_n;
 output          rom_oe_n;
+
+// Dual-port VRAM
+output  [13:0]  vram_wp_a;
+output          vram_wp_we;
+output  [3:0]   vram_wp_di;
+
+output  [13:0]  vram_rp_a;
+input   [3:0]   vram_rp_do;
+
 
 // Z80
 wire    [7:0]   z80_do;
