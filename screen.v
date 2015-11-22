@@ -59,8 +59,8 @@ reg     [7:0]   pix;  // pixel buffer
 
 // Address of screen base attribute
 assign ma = r_ma;
-assign ipce_n = (r_ma[21:19] == 3'b000) ? 1'b0 : 1'b1;
-assign irce_n = (r_ma[21:19] == 3'b001) ? 1'b0 : 1'b1;
+assign ipce_n = (r_ma[21:19] == 3'b000) ? 1'b0 : sclk;
+assign irce_n = (r_ma[21:19] == 3'b001) ? 1'b0 : sclk;
 assign roe_n = ipce_n | irce_n;
 
 always @(posedge sclk)
@@ -69,6 +69,7 @@ begin
     scmd <= 3'd0;
     slin <= 6'd0;
     scol <= 7'd0;
+    pix <= 8'd0;
   end else begin
     if (scmd == 3'd0) begin
       // screen base attribute address LSB
