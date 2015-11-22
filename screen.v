@@ -72,8 +72,8 @@ begin
     pix <= 8'd0;
   end else begin
     if (scmd == 3'd0) begin
-      // screen base attribute address LSB
-      r_ma <= {sbr[10:0], slin[2:0], scol[6:0], 1'b0};
+      // screen base attribute address LSB (even)
+      r_ma <= {sbr[10:0], slin[5:3], scol[6:0], 1'b0};
       scmd <= 3'd1;
     end
     if (scmd == 3'd1) begin
@@ -81,8 +81,8 @@ begin
       scmd <= 3'd2;
     end
     if (scmd == 3'd2) begin
-      // screen base attribute address MSB
-      r_ma <= {sbr[10:0], slin[2:0], scol[6:0], 1'b1};
+      // screen base attribute address MSB (odd)
+      r_ma[0] <= 1'b1;
       scmd <= 3'd3;
     end
     if (scmd == 3'd3) begin
