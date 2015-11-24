@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.65 (w)1999-2015 BSI
-[*] Mon Nov 23 23:24:20 2015
+[*] Tue Nov 24 13:55:59 2015
 [*]
-[dumpfile] "/Users/greg/Projects/z88fpga/z88_0049.vcd"
-[dumpfile_mtime] "Mon Nov 23 23:15:28 2015"
-[dumpfile_size] 18257149
-[savefile] "/Users/greg/Projects/z88fpga/view.gtkw"
-[timestart] 49000425400
-[size] 1661 883
-[pos] -1 -1
-*-15.000000 49000543142 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[dumpfile] "/Users/thierrypeycru/Documents/Z88/z88fpga/z88_0004.vcd"
+[dumpfile_mtime] "Tue Nov 24 13:54:50 2015"
+[dumpfile_size] 20420102
+[savefile] "/Users/thierrypeycru/Documents/Z88/z88fpga/view.gtkw"
+[timestart] 4000016936
+[size] 1440 883
+[pos] -1 -24
+*-15.000000 4000016936 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.v.
 [treeopen] TOP.v.z80.
 [sst_width] 193
 [signals_width] 217
 [sst_expanded] 1
-[sst_vpaned_height] 229
+[sst_vpaned_height] 224
 @200
 -clock & reset
 @28
@@ -40,9 +40,8 @@ TOP.v.theblink.zac
 TOP.v.theblink.cdi[7:0]
 TOP.v.theblink.r_cdi[7:0]
 TOP.v.z88_cdi[7:0]
-@29
-TOP.v.z88_rd_n
 @28
+TOP.v.z88_rd_n
 TOP.v.z88_ipce_n
 TOP.v.z88_roe_n
 @200
@@ -84,5 +83,7 @@ TOP.v.theblink.sr2[7:0]
 TOP.v.theblink.sr3[7:0]
 @200
 -Screen
+@29
+TOP.v.thescreen.lcdon
 [pattern_trace] 1
 [pattern_trace] 0
