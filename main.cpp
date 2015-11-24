@@ -15,7 +15,7 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)( (491520 * 4) + 10 ))
+#define NUM_STEPS    ((vluint64_t)( (491520 * 1) + 10 ))
 // Half period (in ps) of a 9.8304 MHz clock
 #define STEP_PS      ((vluint64_t)5086)
 
@@ -167,6 +167,35 @@ int main(int argc, char **argv, char **env)
         top->reset_n = (tb_sstep < (vluint64_t)24) ? 0 : 1;
         // Toggle clock
         top->clk = top->clk ^ 1;
+
+        // Simulate ROM behaviour
+        if (!top->rom_oe_n && !top->rom_ce_n) {
+          disas_rom = true; disas_ram = false;
+          top->rom_do = ROM[top->rom_a & (ROM_SIZE-1)];
+        } else {
+          top->rom_do = 0xFF;
+        }
+
+        // Simulate RAM behaviour
+        if (!top->ram_oe_n && !top->ram_ce_n) {
+          disas_rom = false; disas_ram = true;
+          top->ram_do = RAM[top->ram_a & (RAM_SIZE-1)];
+        } else {
+          top->ram_do = 0xFF;
+        }
+        if (!top->ram_we_n && !top->ram_ce_n) {
+          RAM[top->ram_a & (RAM_SIZE-1)] = top->ram_di;
+        }
+
+        // Simulate VRAM behaviour
+        if (top->clk) {
+          top->vram_rp_do = VRAM[top->vram_rp_a & (VRAM_SIZE-1)] & 0x0f;
+          if (top->vram_wp_we) {
+            VRAM[top->vram_wp_a & (VRAM_SIZE-1)] = (top->vram_wp_di & 0x0f);
+          }
+        }
+
+
         // Evaluate verilated model
         top->eval();
 
@@ -193,7 +222,7 @@ int main(int argc, char **argv, char **env)
             }
           }
           first = true;
-          opc[opcn] = top->v__DOT__z88_cdo;
+          opc[opcn] = top->v__DOT__z80_cdi;
           ++opcn;
           regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
           regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
@@ -231,38 +260,12 @@ int main(int argc, char **argv, char **env)
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
 
         if (top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && mreq_prev) {
-          opc[opcn] = top->v__DOT__z88_cdo;
+          opc[opcn] = top->v__DOT__z80_cdi;
           ++opcn;
         }
         mreq_prev = top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
 
 
-        // Simulate ROM behaviour
-        if (!top->rom_oe_n && !top->rom_ce_n) {
-          disas_rom = true; disas_ram = false;
-          top->rom_do = ROM[top->rom_a & (ROM_SIZE-1)];
-        } else {
-          top->rom_do = 0xFF;
-        }
-
-        // Simulate RAM behaviour
-        if (!top->ram_oe_n && !top->ram_ce_n) {
-          disas_rom = false; disas_ram = true;
-          top->ram_do = RAM[top->ram_a & (RAM_SIZE-1)];
-        } else {
-          top->ram_do = 0xFF;
-        }
-        if (!top->ram_we_n && !top->ram_ce_n) {
-          RAM[top->ram_a & (RAM_SIZE-1)] = top->ram_di;
-        }
-
-        // Simulate VRAM behaviour
-        if (top->clk) {
-          top->vram_rp_do = VRAM[top->vram_rp_a & (VRAM_SIZE-1)] & 0x0f;
-          if (top->vram_wp_we) {
-            VRAM[top->vram_wp_a & (VRAM_SIZE-1)] = (top->vram_wp_di & 0x0f);
-          }
-        }
 
 #if VM_TRACE
         // Dump signals into VCD file

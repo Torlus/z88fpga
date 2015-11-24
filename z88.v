@@ -64,7 +64,8 @@ wire            z88_nmi_n;
 wire            z88_busrq_n;
 wire    [21:0]  z88_ma;
 wire    [15:0]  z88_ca;
-wire    [7:0]   z88_cdo;
+wire    [7:0]   z80_cdi;
+wire    [7:0]   vid_cdi;
 wire    [7:0]   z88_cdi;
 wire            z88_ipce_n;
 wire            z88_irce_n;
@@ -82,6 +83,8 @@ wire    [9:0]   z88_pb1;
 wire    [8:0]   z88_pb2;
 wire    [10:0]  z88_pb3;
 wire    [10:0]  z88_sbr;
+wire    [1:0]   z88_clkcnt;
+wire    [21:0]  z88_va;
 
 // Clocks
 assign z88_mck = clk;
@@ -104,7 +107,7 @@ tv80s z80 (
   .int_n(z88_int_n),
   .nmi_n(z88_nmi_n),
   .busrq_n(1'b1),           // not wired
-  .di(z88_cdo),
+  .di(z80_cdi),
   .cen(z88_pm1)
 );
 
@@ -121,8 +124,10 @@ blink theblink (
   .sck(z88_sck),
   .pm1(z88_pm1),
   .cdi(z88_cdi),
-  .cdo(z88_cdo),
+  .z80_cdo(z80_cdi),
+  .vid_cdo(vid_cdi),
   .ca(z88_ca),
+  .va(z88_va),
   .ma(z88_ma),
   .hlt_n(z88_halt_n),
   .nmib_n(z88_nmi_n),
@@ -144,25 +149,23 @@ blink theblink (
   .pb1w(z88_pb1),
   .pb2w(z88_pb2),
   .pb3w(z88_pb3),
-  .sbrw(z88_sbr)
+  .sbrw(z88_sbr),
+  .clkcnt(z88_clkcnt)
 );
 
 // Screen instance
 screen thescreen (
   .mck(z88_mck),
+  .clkcnt(z88_clkcnt),
   .rin_n(z88_reset_n),
   .lcdon(z88_lcdon),
-  .cdi(z88_cdi),
-  .mrq_n(z88_mreq_n),
+  .cdi(vid_cdi),
   .pb0(z88_pb0),
   .pb1(z88_pb1),
   .pb2(z88_pb2),
   .pb3(z88_pb3),
   .sbr(z88_sbr),
-  .ma(z88_ma),
-  .roe_n(z88_roe_n),
-  .ipce_n(z88_ipce_n),
-  .irce_n(z88_irce_n),
+  .va(z88_va),
   .vram_a(vram_wp_a),
   .vram_do(vram_wp_di),
   .vram_we(vram_wp_we)
@@ -170,7 +173,7 @@ screen thescreen (
 
 // Internal RAM (Slot 0)
 assign ram_a = z88_ma[18:0];
-assign ram_di = z88_cdo;
+assign ram_di = z80_cdi;
 assign ram_we_n = z88_wrb_n;
 assign ram_oe_n = z88_roe_n;
 assign ram_ce_n = z88_irce_n;
@@ -180,7 +183,7 @@ assign rom_a = z88_ma[18:0];
 assign rom_oe_n = z88_roe_n;
 assign rom_ce_n = z88_ipce_n;
 
-assign z88_cdi = (!z88_ipce_n & !z88_roe_n) ? rom_do
+assign z88_cdi = (!z88_ipce_n && !z88_roe_n) ? rom_do
                 : (!z88_irce_n & !z88_roe_n) ? ram_do
                 : (!z88_iorq_n & z88_rd_n) ? z80_do
                 : (!z88_mreq_n & z88_rd_n) ? z80_do

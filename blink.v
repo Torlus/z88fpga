@@ -1,16 +1,17 @@
 module blink (
   // Outputs
-  rout_n, cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
+  rout_n, z80_cdo, vid_cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
   intb_n, nmib_n, roe_n,
-  lcdon, pb0w, pb1w, pb2w, pb3w, sbrw, 
+  lcdon, pb0w, pb1w, pb2w, pb3w, sbrw, clkcnt,
   // Inputs
-  ca, crd_n, cdi, mck, sck, rin_n, flp, hlt_n, mrq_n, ior_n, cm1_n, kbmat
+  ca, va, crd_n, cdi, mck, sck, rin_n, flp, hlt_n, mrq_n, ior_n, cm1_n, kbmat
 );
 
 // Clocks
 input           mck;      // 9.83MHz Master Clock
 input           sck;      // 25.6KHz Standby Clock
 output          pm1;      // Z80 clock driven by blink
+output  [1:0]   clkcnt;
 
 // Reset
 input           rin_n;    // Reset button
@@ -25,9 +26,13 @@ input   [15:0]  ca;       // Z80 address bus
 // Physical memory (22 bits address bus)
 output  [21:0]  ma;       // slot 0 (internal) to slot 3
 
+// Video address
+input   [21:0]  va;
+
 // Data bus
 input   [7:0]   cdi;
-output  [7:0]   cdo;
+output  [7:0]   z80_cdo;
+output  [7:0]   vid_cdo;
 
 // Control bus
 input           hlt_n;    // HALT Coma/Standby command
@@ -81,6 +86,12 @@ output  [10:0]  sbrw;
 // Reset
 assign rout_n = rin_n;
 
+wire    [21:0]  za;
+reg     [7:0]   r_cdi;
+
+wire    [21:0]  w_ma;
+assign ma = w_ma;
+
 // Z80 Clock (PM1)
 reg   [1:0]   z80_clkcnt;
 reg           z80_clk;
@@ -98,6 +109,8 @@ begin
     end
   end
 end
+
+assign clkcnt = z80_clkcnt;
 
 assign pm1 = (pm1s) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
 
@@ -153,7 +166,7 @@ reg     [5:0]   tim1; // seconds (0-59)
 reg     [20:0]  timm; // minutes (0-2^21)
 
 // Memory addressing
-assign ma =
+assign za =
   (ca[15:14] == 2'b11) ? { sr3, ca[13:0] }                // C000-FFFF
   :  (ca[15:14] == 2'b10) ? { sr2, ca[13:0] }             // 8000-BFFF
   :  (ca[15:14] == 2'b01) ? { sr1, ca[13:0] }             // 4000-7FFF
@@ -161,16 +174,35 @@ assign ma =
   :  (ca[15:13] == 3'b000) ? { 2'b00, com[2], 6'b0, ca[12:0] } // 0000-1FFF : Bank $00 !RAMS, Bank $20 RAMS
   : 22'b11_1111_1111_1111_1111_1111;
 
+// Z80 Access Cycle
+wire zac;
+assign zac = (z80_clkcnt == 2'd2);
+
+assign w_ma = zac ? za : va;
+
 // Control bus
 assign ipce_n =
-  (ma[21:19] == 3'b000 & !mrq_n) ? 1'b0 : 1'b1;
+  (w_ma[21:19] == 3'b000 & !mrq_n & zac) ? 1'b0
+  : (w_ma[21:19] == 3'b000 & !zac) ? 1'b0 : 1'b1;
 
 assign irce_n =
-  (ma[21:19] == 3'b001 & !mrq_n) ? 1'b0 : 1'b1;
+  (w_ma[21:19] == 3'b001 & !mrq_n & zac) ? 1'b0
+  : (w_ma[21:19] == 3'b001 & !zac) ? 1'b0 : 1'b1;
 
-assign wrb_n = (!mrq_n & crd_n) ? 1'b0 : 1'b1;
-assign roe_n = (!mrq_n & !crd_n) ? 1'b0 : 1'b1;
-assign cdo = (!ior_n) ? r_cdo : cdi;
+assign wrb_n = (!mrq_n & crd_n & zac) ? 1'b0 : 1'b1;
+assign roe_n = (!mrq_n & !crd_n & zac) ? 1'b0 : !zac;
+assign z80_cdo = (!ior_n) ? r_cdo : r_cdi;
+assign vid_cdo = cdi;
+
+// Z80 Data Bus latch
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    r_cdi <= 8'h00;
+  end else if (zac) begin
+    r_cdi <= cdi;
+  end
+end
 
 // Keyboard
 reg     [63:0]  kbmat;
