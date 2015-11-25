@@ -190,7 +190,7 @@ assign irce_n =
   : (w_ma[21:19] == 3'b001 & !zac) ? 1'b0 : 1'b1;
 
 assign wrb_n = (!mrq_n & crd_n & zac) ? 1'b0 : 1'b1;
-assign roe_n = (!mrq_n & !crd_n & zac) ? 1'b0 : !zac;
+assign roe_n = (!mrq_n & !crd_n & zac) ? 1'b0 : zac;
 assign z80_cdo = (!ior_n) ? r_cdo : r_cdi;
 assign vid_cdo = cdi;
 
@@ -224,8 +224,8 @@ assign kbd = ~kbcol[0] & ~kbcol[1] & ~kbcol[2] & ~kbcol[3]
 // Shortcuts
 wire reg_rd;
 wire reg_wr;
-assign reg_rd = !ior_n & !crd_n;
-assign reg_wr = !ior_n & crd_n;
+assign reg_rd = !ior_n & !crd_n & zac;
+assign reg_wr = !ior_n & crd_n & zac;
 
 integer i;
 
