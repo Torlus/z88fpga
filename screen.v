@@ -39,7 +39,13 @@ assign vram_we = sbar;  // output to vram when sba read is done
 // Internal screen registers
 reg     [5:0]   slin; // screen line (64)
 reg     [6:0]   scol; // screen column (108)
-reg     [13:0]  sba;  // screen base attribute (char to render)
+                      // Screen Base Attribute from the Screen Base File
+reg             hrs;  // hires (8 pixels wide char else 6)
+reg             rev;  // reverse char (XOR)
+reg             fls;  // flash (1 second flashing)
+reg             gry;  // grey (5ms flashing probably)
+reg             und;  // underline (sba[9] when HRS)
+reg     [8:0]   sba;  // screen base attribute (char to render)
 reg             sbar; // sba read flag
 reg     [21:0]  r_va; // memory address register
 reg     [1:0]   pix6b;  // pixel buffer for lores (6 pixels wide)
@@ -69,21 +75,26 @@ begin
     end
     if (!sbar && clkcnt == 2'b01) begin
       // Z80 is not active, grab sba high
-      sba[13:8] <= cdi[5:0];
+      hrs <= cdi[5];
+      rev <= cdi[4];
+      fls <= cdi[3];
+      gry <= cdi[2];
+      und <= cdi[1];
+      sba[8] <= cdi[0];
       sbar <= 1'b1;
     end
     if (sbar && clkcnt == 2'b10) begin
       // Z80 is active, data bus not to be used
       // pixel data address for next pulse
-      r_va <= (sba[13] == 0) ?
+      r_va <= (!hrs) ?
         (sba[8:6] == 3'b111) ? {pb0[12:0], sba[5:0], slin[2:0]} // HRS=0; Lores0 (ROM)
         : {pb1[9:0], sba[8:0], slin[2:0]}                       // Lores1 (RAM)
-      : (sba[9:8] == 2'b11) ? {pb3[10:0], sba[7:0], slin[2:0]}  // HRS=1; Hires1 (RAM)
-        : {pb2[8:0], sba[9:0], slin[2:0]};                      // Hires0 (ROM)
+      : (und && sba[8]) ? {pb3[10:0], sba[7:0], slin[2:0]}  // HRS=1; Hires1 (RAM)
+        : {pb2[8:0], und, sba[8:0], slin[2:0]};                      // Hires0 (ROM)
     end
     if (sbar && clkcnt == 2'b00) begin
       // Z80 is not active, grab pixels and output first nibble
-      if (sba[13]) begin
+      if (hrs) begin
         // HRS output first nibble, store second
         vram_do <= cdi[7:4];
         pix4b <= cdi[3:0];
