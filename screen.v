@@ -35,10 +35,10 @@ output  [3:0]   vram_do;
 output          vram_we;
 
 // Internal screen registers
-reg     [2:0]   scmd; // screen command
 reg     [5:0]   slin; // screen line (64)
 reg     [6:0]   scol; // screen column (108)
 reg     [13:0]  sba;  // screen base attribute (char to render)
+reg             sbar; // sba read flag
 reg     [21:0]  r_va; // memory address register
 reg     [7:0]   pix;  // pixel buffer
 
@@ -47,38 +47,40 @@ assign va = r_va;
 always @(posedge mck)
 begin
   if (!rin_n | !lcdon) begin
-    scmd <= 3'd0;
+    sbar <= 1'b0;
     slin <= 6'd0;
     scol <= 7'd0;
     pix <= 8'd0;
   end else begin
-    if (scmd == 3'd0 && clkcnt == 2'b10) begin
-      // screen base attribute address LSB (even)
+    if (!sbar && clkcnt == 2'b10) begin
+      // Z80 is active, data bus not to be used
+      // screen base attribute address LSB (even) for next pulse
       r_va <= {sbr[10:0], slin[5:3], scol[6:0], 1'b0};
-      scmd <= 3'd1;
     end
-    if (scmd == 3'd1) begin
+    if (!sbar && clkcnt == 2'b00) begin
+      // Z80 is not active, grab sba low
       sba[7:0] <= cdi;
+      // screen base attribute address MSB (odd) for next pulse
       r_va[0] <= 1'b1;
-      scmd <= 3'd2;
     end
-    if (scmd == 3'd2) begin
-      // screen base attribute address MSB (odd)
+    if (!sbar && clkcnt == 2'b01) begin
+      // Z80 is not active, grab sba high
       sba[13:8] <= cdi[5:0];
-      scmd <= 3'd3;
+      sbar <= 1'b1;
     end
-    if (scmd == 3'd3) begin
-      // pixel data address
+    if (sbar && clkcnt == 2'b10) begin
+      // Z80 is active, data bus not to be used
+      // pixel data address for next pulse
       r_va <= (sba[13] == 0) ?
         (sba[8:6] == 3'b111) ? {pb0[12:0], sba[5:0], slin[2:0]} // HRS=0; Lores0 (ROM)
         : {pb1[9:0], sba[8:0], slin[2:0]}                       // Lores1 (RAM)
       : (sba[9:8] == 2'b11) ? {pb3[10:0], sba[7:0], slin[2:0]}  // HRS=1; Hires1 (RAM)
         : {pb2[8:0], sba[9:0], slin[2:0]};                      // Hires0 (ROM)
-      scmd <= 3'd4;
     end
-    if  (scmd == 3'd4) begin
+    if (sbar && clkcnt == 2'b00) begin
+      // Z80 is not active, grab pixels
       pix <= cdi;
-      scmd <= 3'd0;
+      // Increment line/column counters
       if (scol == 7'd108) begin
         scol <= 7'd0;
         if (slin == 6'd63) begin
@@ -89,6 +91,10 @@ begin
       end else begin
         scol <= scol + 1'b1;
       end
+    end
+    if  (sbar && clkcnt == 2'b01) begin
+      // Next cycle read sba
+      sbar <= 1'b0;
     end
   end
 end
