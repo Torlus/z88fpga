@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.65 (w)1999-2015 BSI
-[*] Wed Nov 25 12:19:03 2015
+[*] Wed Nov 25 15:55:23 2015
 [*]
 [dumpfile] "/Users/thierrypeycru/Documents/Z88/z88fpga/z88_0039.vcd"
-[dumpfile_mtime] "Wed Nov 25 12:03:54 2015"
-[dumpfile_size] 25620832
+[dumpfile_mtime] "Wed Nov 25 15:44:18 2015"
+[dumpfile_size] 25604270
 [savefile] "/Users/thierrypeycru/Documents/Z88/z88fpga/screen.gtkw"
-[timestart] 39000165126
-[size] 1440 883
+[timestart] 39240235400
+[size] 1440 900
 [pos] -1 -24
-*-15.000000 23000109900 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-15.000000 39240315874 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.v.
 [treeopen] TOP.v.z80.
 [sst_width] 193
 [signals_width] 217
 [sst_expanded] 1
-[sst_vpaned_height] 209
+[sst_vpaned_height] 208
 @200
 -clock & reset
 @28
@@ -42,8 +42,6 @@ TOP.ram_di[7:0]
 TOP.v.theblink.zac
 @22
 TOP.v.theblink.cdi[7:0]
-TOP.v.theblink.r_cdi[7:0]
-TOP.v.z88_cdi[7:0]
 @28
 TOP.v.z88_rd_n
 TOP.v.z88_ipce_n
@@ -52,21 +50,28 @@ TOP.v.z88_roe_n
 -Screen
 @28
 TOP.v.thescreen.lcdon
-TOP.v.thescreen.scmd[2:0]
-@22
+@23
 TOP.v.thescreen.slin[5:0]
+@22
 TOP.v.thescreen.scol[6:0]
 TOP.v.thescreen.r_va[21:0]
 TOP.v.thescreen.cdi[7:0]
 TOP.v.theblink.cdi[7:0]
 TOP.v.thescreen.sba[13:0]
-TOP.v.thescreen.pix[7:0]
 TOP.v.thescreen.pb0[12:0]
-@23
 TOP.v.thescreen.pb1[9:0]
-@22
 TOP.v.thescreen.pb2[8:0]
 TOP.v.thescreen.pb3[10:0]
 TOP.v.thescreen.sbr[10:0]
+@28
+TOP.v.thescreen.sbar
+TOP.v.thescreen.pix6f
+TOP.v.thescreen.pix6b[1:0]
+TOP.v.thescreen.pix4b[3:0]
+@22
+TOP.v.thescreen.vram_a[13:0]
+@28
+TOP.v.thescreen.vram_we
+TOP.v.thescreen.vram_do[3:0]
 [pattern_trace] 1
 [pattern_trace] 0

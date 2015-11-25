@@ -34,13 +34,17 @@ output  [13:0]  vram_a;
 output  [3:0]   vram_do;
 output          vram_we;
 
+assign vram_we = sbar;  // output to vram when sba read is done
+
 // Internal screen registers
 reg     [5:0]   slin; // screen line (64)
 reg     [6:0]   scol; // screen column (108)
 reg     [13:0]  sba;  // screen base attribute (char to render)
 reg             sbar; // sba read flag
 reg     [21:0]  r_va; // memory address register
-reg     [7:0]   pix;  // pixel buffer
+reg     [1:0]   pix6b;  // pixel buffer for lores (6 pixels wide)
+reg     [3:0]   pix4b;  // pixel buffer for second step output
+reg             pix6f;  // flag for 2 pixels remaining in pix6b
 
 assign va = r_va;
 
@@ -50,7 +54,7 @@ begin
     sbar <= 1'b0;
     slin <= 6'd0;
     scol <= 7'd0;
-    pix <= 8'd0;
+    pix6f <= 1'b0;
   end else begin
     if (!sbar && clkcnt == 2'b10) begin
       // Z80 is active, data bus not to be used
@@ -78,23 +82,49 @@ begin
         : {pb2[8:0], sba[9:0], slin[2:0]};                      // Hires0 (ROM)
     end
     if (sbar && clkcnt == 2'b00) begin
-      // Z80 is not active, grab pixels
-      pix <= cdi;
-      // Increment line/column counters
+      // Z80 is not active, grab pixels and output first nibble
+      if (sba[13]) begin
+        // HRS output first nibble, store second
+        vram_do <= cdi[7:4];
+        pix4b <= cdi[3:0];
+        pix6f <= 1'b0;
+      end else begin
+        // LRS
+        if (pix6f) begin
+          // 2 pixels remaining in buffer sent with 2 left pixels
+          vram_do <= {pix6b[1:0], cdi[5:4]};
+          pix4b <= cdi[3:0];
+          pix6f <= 1'b0;
+        end else begin
+          // buffer empty, ouput 4 left pixels
+          vram_do <= cdi[5:2];
+          pix6b[1:0] <= cdi[1:0];
+          pix6f <= 1'b1;
+        end
+      end
+      // Increment line/column counters and vram address
       if (scol == 7'd108) begin
         scol <= 7'd0;
+        vram_a[7:0] <= 8'd0;
         if (slin == 6'd63) begin
           slin <= 6'd0;
+          vram_a[13:8] <= 6'd0;
         end else begin
           slin <= slin + 1'b1;
+          vram_a[13:8] <= vram_a[13:8] + 1'b1;
         end
       end else begin
         scol <= scol + 1'b1;
+        vram_a[7:0] <= vram_a[7:0] + 1'b1;
       end
     end
     if  (sbar && clkcnt == 2'b01) begin
       // Next cycle read sba
       sbar <= 1'b0;
+      // Output remaining pixels
+      if (!pix6f) begin
+        vram_do <= pix4b;
+      end
     end
   end
 end
