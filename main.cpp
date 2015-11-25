@@ -168,6 +168,9 @@ int main(int argc, char **argv, char **env)
         // Toggle clock
         top->clk = top->clk ^ 1;
 
+        // Evaluate verilated model
+        top->eval();
+        
         // Simulate ROM behaviour
         if (!top->rom_oe_n && !top->rom_ce_n) {
           disas_rom = true; disas_ram = false;
@@ -194,10 +197,6 @@ int main(int argc, char **argv, char **env)
             VRAM[top->vram_wp_a & (VRAM_SIZE-1)] = (top->vram_wp_di & 0x0f);
           }
         }
-
-
-        // Evaluate verilated model
-        top->eval();
 
         // Disassembly
         if (!top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && m1_prev) {

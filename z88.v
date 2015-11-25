@@ -173,7 +173,7 @@ screen thescreen (
 
 // Internal RAM (Slot 0)
 assign ram_a = z88_ma[18:0];
-assign ram_di = z80_cdi;
+assign ram_di = z80_do;
 assign ram_we_n = z88_wrb_n;
 assign ram_oe_n = z88_roe_n;
 assign ram_ce_n = z88_irce_n;
