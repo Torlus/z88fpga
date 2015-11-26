@@ -57,6 +57,7 @@ reg             pix6f;  // flag for 2 pixels remaining in pix6b
 
 assign va = r_va;
 
+// screen rendering main
 always @(posedge mck)
 begin
   if (!rin_n | !lcdon) begin
@@ -64,6 +65,7 @@ begin
     slin <= 6'd0;
     scol <= 7'd0;
     pix6f <= 1'b0;
+    vram_a <= 14'd0;
   end else begin
     if (!sbar && clkcnt == 2'b10) begin
       // Z80 is active, data bus not to be used
@@ -97,14 +99,8 @@ begin
     end
     if (sbar && clkcnt == 2'b00) begin
       // Z80 is not active, grab pixels and output first nibble
-      if (hrs) begin
-        // HRS output first nibble, store second
-        // /!\ 2 pixels in pix6b are lost
-        vrdo <= cdi[7:4];
-        pix4b <= cdi[3:0];
-        pix6f <= 1'b0;
-      end else begin
-        // LRS
+      if (!hrs || (hrs && rev && fls)) begin
+        // LRS or cursor
         if (pix6f) begin
           // 2 pixels remaining in buffer sent with 2 left pixels
           vrdo <= {pix6b[1:0], cdi[5:4]};
@@ -116,6 +112,15 @@ begin
           pix6b[1:0] <= cdi[1:0];
           pix6f <= 1'b1;
         end
+      end else begin
+        // HRS or null
+        if (rev == 1'b0 || fls == 1'b1) begin
+          // Not null
+          // output first nibble, store second
+          vrdo <= cdi[7:4];
+          pix4b <= cdi[3:0];
+        end
+        pix6f <= 1'b0;
       end
       // Increment line/column counters and vram address
       if (scol == 7'd108) begin
@@ -130,15 +135,19 @@ begin
         end
       end else begin
         scol <= scol + 1'b1;
-        vram_a[7:0] <= vram_a[7:0] + 1'b1;
+        if (hrs == 1'b0 || rev == 1'b0 || fls == 1'b1) begin
+          // increment nibble counter if not null char
+          vram_a[7:0] <= vram_a[7:0] + 1'b1;
+        end
       end
     end
     if  (sbar && clkcnt == 2'b01) begin
       // Next cycle read sba
       sbar <= 1'b0;
-      // Output remaining pixels
-      if (!pix6f) begin
+      // Output remaining pixels (or do nothing if null char or only 2 pixels left)
+      if (pix6f == 1'b0 && (hrs == 1'b0 || rev == 1'b0 || fls == 1'b1)) begin
         vrdo <= pix4b;
+        vram_a[7:0] <= vram_a[7:0] + 1'b1;
       end
     end
   end
