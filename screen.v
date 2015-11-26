@@ -96,19 +96,19 @@ begin
       // Z80 is not active, grab pixels and output first nibble
       if (hrs) begin
         // HRS output first nibble, store second
-        vram_do <= cdi[7:4];
+        vrdo <= cdi[7:4];
         pix4b <= cdi[3:0];
         pix6f <= 1'b0;
       end else begin
         // LRS
         if (pix6f) begin
           // 2 pixels remaining in buffer sent with 2 left pixels
-          vram_do <= {pix6b[1:0], cdi[5:4]};
+          vrdo <= {pix6b[1:0], cdi[5:4]};
           pix4b <= cdi[3:0];
           pix6f <= 1'b0;
         end else begin
           // buffer empty, ouput 4 left pixels
-          vram_do <= cdi[5:2];
+          vrdo <= cdi[5:2];
           pix6b[1:0] <= cdi[1:0];
           pix6f <= 1'b1;
         end
@@ -134,10 +134,19 @@ begin
       sbar <= 1'b0;
       // Output remaining pixels
       if (!pix6f) begin
-        vram_do <= pix4b;
+        vrdo <= pix4b;
       end
     end
   end
 end
+
+// Apply effects
+wire    [3:0]   vrdo;
+wire    [3:0]   vrdo_und;
+wire    [3:0]   vrdo_rev;
+assign vrdo_und = (und && !hrs && slin[2:0] == 3'b111) ? 4'b1111 : vrdo;
+assign vrdo_rev = (rev) ? {!vrdo_und[3], !vrdo_und[2], !vrdo_und[1], !vrdo_und[0]}  : vrdo_und;
+// TODO fls & gry
+assign vram_do = vrdo_rev;
 
 endmodule
