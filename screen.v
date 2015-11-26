@@ -6,6 +6,7 @@ module screen(
 mck, rin_n, lcdon, clkcnt,
 cdi,
 pb0, pb1, pb2, pb3, sbr,
+t_1s, t_5ms,
 
 // Outputs:
 va,
@@ -17,6 +18,8 @@ input           mck;
 input           rin_n;
 input           lcdon;
 input   [1:0]   clkcnt;
+input           t_1s;
+input           t_5ms;
 
 // Blink screen registers
 input   [12:0]  pb0;  // Lores0 (ROM, 64 chars map)
@@ -96,6 +99,7 @@ begin
       // Z80 is not active, grab pixels and output first nibble
       if (hrs) begin
         // HRS output first nibble, store second
+        // /!\ 2 pixels in pix6b are lost
         vrdo <= cdi[7:4];
         pix4b <= cdi[3:0];
         pix6f <= 1'b0;
@@ -144,9 +148,17 @@ end
 wire    [3:0]   vrdo;
 wire    [3:0]   vrdo_und;
 wire    [3:0]   vrdo_rev;
+wire    [3:0]   vrdo_gry;
+wire    [3:0]   vrdo_fls;
+// Underline, full nibble if lores and eighth line
 assign vrdo_und = (und && !hrs && slin[2:0] == 3'b111) ? 4'b1111 : vrdo;
+// Reverse, XORed nibble
 assign vrdo_rev = (rev) ? {!vrdo_und[3], !vrdo_und[2], !vrdo_und[1], !vrdo_und[0]}  : vrdo_und;
-// TODO fls & gry
-assign vram_do = vrdo_rev;
+// Grey, 5ms flashing (probably)
+assign vrdo_gry = (gry) ? vrdo_rev & {t_5ms, t_5ms,t_5ms,t_5ms} : vrdo_rev;
+// Flash, 1 second flashing
+assign vrdo_fls = (fls) ? vrdo_gry & {t_1s, t_1s, t_1s, t_1s} : vrdo_gry;
+// Output nibble to VRAM frame buffer
+assign vram_do = vrdo_fls;
 
 endmodule

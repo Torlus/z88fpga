@@ -85,6 +85,8 @@ wire    [10:0]  z88_pb3;
 wire    [10:0]  z88_sbr;
 wire    [1:0]   z88_clkcnt;
 wire    [21:0]  z88_va;
+wire            z88_t1s;
+wire            z88_t5ms;
 
 // Clocks
 assign z88_mck = clk;
@@ -150,7 +152,9 @@ blink theblink (
   .pb2w(z88_pb2),
   .pb3w(z88_pb3),
   .sbrw(z88_sbr),
-  .clkcnt(z88_clkcnt)
+  .clkcnt(z88_clkcnt),
+  .t_1s(z88_t1s),
+  .t_5ms(z88_t5ms)
 );
 
 // Screen instance
@@ -168,7 +172,9 @@ screen thescreen (
   .va(z88_va),
   .vram_a(vram_wp_a),
   .vram_do(vram_wp_di),
-  .vram_we(vram_wp_we)
+  .vram_we(vram_wp_we),
+  .t_1s(z88_t1s),
+  .t_5ms(z88_t5ms)
 );
 
 // Internal RAM (Slot 0)

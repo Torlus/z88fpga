@@ -3,6 +3,7 @@ module blink (
   rout_n, z80_cdo, vid_cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
   intb_n, nmib_n, roe_n,
   lcdon, pb0w, pb1w, pb2w, pb3w, sbrw, clkcnt,
+  t_1s, t_5ms,
   // Inputs
   ca, va, crd_n, cdi, mck, sck, rin_n, flp, hlt_n, mrq_n, ior_n, cm1_n, kbmat
 );
@@ -12,6 +13,8 @@ input           mck;      // 9.83MHz Master Clock
 input           sck;      // 25.6KHz Standby Clock
 output          pm1;      // Z80 clock driven by blink
 output  [1:0]   clkcnt;
+output          t_1s;     // 1s for cursor, flash effect
+output          t_5ms;    // 5ms for grey effect
 
 // Reset
 input           rin_n;    // Reset button
@@ -338,6 +341,10 @@ begin
     end
   end
 end
+
+// Lines for Screen effects : grey and flash
+assign t_1s = tim0[7];
+assign t_5ms = tim0[1];
 
 // RTC: IO Registers
 always @(posedge mck)
