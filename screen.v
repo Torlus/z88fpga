@@ -123,7 +123,7 @@ begin
         pix6f <= 1'b0;
       end
       // Increment line/column counters and vram address
-      if (scol == 7'd108) begin
+      if (scol == 7'd107) begin
         scol <= 7'd0;
         vram_a[7:0] <= 8'd0;
         if (slin == 6'd63) begin
