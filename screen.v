@@ -10,8 +10,12 @@ t_1s, t_5ms,
 
 // Outputs:
 va,
-vram_a, vram_do, vram_we
+vram_a, vram_do, vram_we,
+frame
 );
+
+// BMP debug output
+output          frame;
 
 // Clocks and control
 input           mck;
@@ -66,6 +70,8 @@ begin
     scol <= 7'd0;
     pix6f <= 1'b0;
     vram_a <= 14'd0;
+    // frame flag for BMP debug output
+    frame <= 1'b0;
   end else begin
     if (!sbar && clkcnt == 2'b10) begin
       // Z80 is active, data bus not to be used
@@ -129,6 +135,8 @@ begin
         if (slin == 6'd63) begin
           slin <= 6'd0;
           vram_a[13:8] <= 6'd0;
+          // frame flag for BMP output
+          frame <= 1'b1;
         end else begin
           slin <= slin + 1'b1;
           vram_a[13:8] <= vram_a[13:8] + 1'b1;
@@ -142,6 +150,8 @@ begin
       end
     end
     if  (sbar && clkcnt == 2'b01) begin
+      // BMP done
+      frame <= 1'b0;
       // Next cycle read sba
       sbar <= 1'b0;
       // Output remaining pixels (or do nothing if null char or only 2 pixels left)

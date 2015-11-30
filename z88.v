@@ -5,6 +5,7 @@ module z88 (
   vram_wp_a, vram_wp_we, vram_wp_di,
   vram_rp_a,
   href, vsync, rgb,
+  frame,
 
   // Inputs
   clk, reset_n,
@@ -14,6 +15,9 @@ module z88 (
   vram_rp_do,
   flap
 );
+
+// BMP debug output
+output          frame;
 
 // Clocks, Reset switch, Flap switch
 input           clk;
@@ -180,7 +184,8 @@ screen thescreen (
   .vram_do(vram_wp_di),
   .vram_we(vram_wp_we),
   .t_1s(z88_t1s),
-  .t_5ms(z88_t5ms)
+  .t_5ms(z88_t5ms),
+  .frame(frame)
 );
 
 // Internal RAM (Slot 0)

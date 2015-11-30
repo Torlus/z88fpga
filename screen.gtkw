@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.65 (w)1999-2015 BSI
-[*] Mon Nov 30 16:42:09 2015
+[*] Mon Nov 30 21:27:49 2015
 [*]
 [dumpfile] "/Users/thierrypeycru/Documents/Z88/z88fpga/z88_0039.vcd"
-[dumpfile_mtime] "Mon Nov 30 16:33:38 2015"
-[dumpfile_size] 27863021
+[dumpfile_mtime] "Mon Nov 30 21:25:23 2015"
+[dumpfile_size] 27863139
 [savefile] "/Users/thierrypeycru/Documents/Z88/z88fpga/screen.gtkw"
-[timestart] 39279479400
+[timestart] 39000165126
 [size] 1440 900
 [pos] -1 -24
-*-15.000000 39279023300 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-15.000000 39000165126 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.v.
 [treeopen] TOP.v.z80.
@@ -72,6 +72,8 @@ TOP.v.thescreen.vram_a[13:0]
 @28
 TOP.v.thescreen.vram_we
 TOP.v.thescreen.vram_do[3:0]
+@29
+TOP.v.thescreen.frame
 @200
 -VGA
 @28
@@ -81,7 +83,7 @@ TOP.v.thevga.line[5:0]
 TOP.v.thevga.nibble[7:0]
 TOP.v.thevga.vram_a[13:0]
 TOP.v.thevga.vram_di[3:0]
-@29
+@28
 TOP.v.thevga.pixel
 [pattern_trace] 1
 [pattern_trace] 0
