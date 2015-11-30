@@ -202,7 +202,7 @@ assign z88_cdi = (!z88_ipce_n && !z88_roe_n) ? rom_do
                 : 8'b11111111;
 
 // PS/2 keyboard
-ps2 ps2kb (
+ps2 theps2 (
   .reset_n(z88_rout_n),
   .ps2clk(ps2clk),
   .ps2dat(ps2dat),

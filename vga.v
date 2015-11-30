@@ -28,33 +28,33 @@ always @(posedge clk25) begin
 		hcount <= 10'd0;
 		vcount <= 10'd0;
 	end else begin
-		if(hcount < 10'd799) begin
+		if (hcount < 10'd799) begin
 			hcount <= hcount + 1'b1;
-		end else if (hcount >= 10'd799) begin
+		end else begin
 			hcount <= 10'd0;
-		end
-		if(vcount < 10'd525 && hcount==10'd799) begin
+			if (vcount < 10'd525) begin
 			vcount <= vcount + 1'b1;
-		end else if (vcount >= 10'd525) begin
+			end else begin
 			vcount <= 10'd0;
+			end
 		end
 	end
 end
 
 always @(posedge clk25) begin
 	if(!reset_n || !lcdon) begin
-		href<=1'b0;
-		vsync<=1'b0;
+		href <= 1'b0;
+		vsync <= 1'b0;
 	end else begin
 		if(hcount <= 10'd656 || hcount >= 10'd752) begin
-			href<=1'b1;
+			href <= 1'b1;
 		end else begin
-			href<=1'b0;
+			href <= 1'b0;
 		end
 		if(vcount <= 10'd490 || vcount >= 10'd492) begin
-			vsync<=1'b1;
+			vsync <= 1'b1;
 		end else begin
-			vsync<=1'b0;
+			vsync <= 1'b0;
 		end
 	end
 end
@@ -69,8 +69,8 @@ assign nibble = (hcount[9:2] <= 8'd159) ? hcount[9:2] : 8'b11111111;
 assign vram_a = {line[5:0], nibble[7:0]};
 
 assign pixel = (hcount[1]) ?
-	(hcount[0]) ? vram_di[3] : vram_di[2]
-	: (hcount[0]) ? vram_di[1] : vram_di[0];
+	(hcount[0]) ? vram_di[0] : vram_di[1]
+	: (hcount[0]) ? vram_di[2] : vram_di[3];
 
 assign rgb = (line == 6'b111111 || nibble == 8'b11111111) ?
 	`WHITE
