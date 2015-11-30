@@ -4,6 +4,7 @@ module z88 (
   rom_a, rom_ce_n, rom_oe_n,
   vram_wp_a, vram_wp_we, vram_wp_di,
   vram_rp_a,
+  href, vsync, rgb,
 
   // Inputs
   clk, reset_n,
@@ -22,6 +23,11 @@ input           flap;  // normaly closed =0, open =1
 // PS/2
 input           ps2clk;
 input           ps2dat;
+
+// VGA
+output          href;
+output          vsync;
+output  [11:0]  rgb;
 
 // Internal RAM
 output  [18:0]  ram_a;
@@ -202,5 +208,17 @@ ps2 ps2kb (
   .ps2dat(ps2dat),
   .kbmat_out(z88_kbmat)
 );
+
+// VGA output
+vga thevga (
+  .clk25(clk),            // /!\ 25.175MHz clock
+  .reset_n(z88_rout_n),
+  .lcdon(z88_lcdon),
+  .vram_a(vram_rp_a),
+  .vram_di(vram_rp_do),
+  .href(href),
+  .vsync(vsync),
+  .rgb(rgb)
+  );
 
 endmodule
