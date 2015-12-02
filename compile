@@ -12,6 +12,7 @@ TOP_FILE=z88
 #C++ support files
 CPP_FILES=\
 "main.cpp\
+ EasyBMP.cpp\
  z80ex_dasm.cpp"
 
 #Cleanup previous output

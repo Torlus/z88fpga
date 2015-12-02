@@ -1,6 +1,7 @@
 #define DPI_DLLISPEC
 #define DPI_DLLESPEC
 
+#include "EasyBMP.h"
 #include "z80ex_dasm.h"
 
 #include "verilated.h"
@@ -75,6 +76,11 @@ int main(int argc, char **argv, char **env)
     // Simulation duration
     time_t beg, end;
     double secs;
+    // BMP
+    BMP *bmp = new BMP;
+    int bmp_idx = 0;
+    bmp->SetBitDepth(24);
+    bmp->SetSize(640, 64);
 
     beg = time(0);
 
@@ -281,6 +287,26 @@ int main(int argc, char **argv, char **env)
             tfp->dump(tb_time);
         }
 #endif
+
+        if (top->clk && top->frame) {
+          int addr = 0;
+          for(int y = 0; y < 64; y++) {
+            addr = y * (1024 >> 2);
+            for(int x = 0; x < 640; x++) {
+              // uint8_t dot = VRAM[addr] & (1 << (3 - (x & 3)));
+              // uint8_t dot = VRAM[addr] & (1 << (x & 3));
+              RGBApixel pixel;
+              pixel.Red   = (dot) ? 0 : 255;
+              pixel.Green = (dot) ? 0 : 255;
+              pixel.Blue  = (dot) ? 0 : 255;
+              bmp->SetPixel(x, y, pixel);
+              if (x & 3) addr++;
+            }
+          }
+          sprintf(file_name, "vid_%04d.bmp", bmp_idx);
+          bmp->WriteToFile(file_name);
+          bmp_idx++;
+        }
 
         // Next simulation step
         tb_time += STEP_PS;

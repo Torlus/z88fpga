@@ -2,3 +2,4 @@ obj_dir
 *.rom
 *.vcd
 *.log
+*.bmp
