@@ -293,14 +293,14 @@ int main(int argc, char **argv, char **env)
           for(int y = 0; y < 64; y++) {
             addr = y * (1024 >> 2);
             for(int x = 0; x < 640; x++) {
-              // uint8_t dot = VRAM[addr] & (1 << (3 - (x & 3)));
+              uint8_t dot = VRAM[addr] & (1 << (3 - (x & 3)));
               // uint8_t dot = VRAM[addr] & (1 << (x & 3));
               RGBApixel pixel;
               pixel.Red   = (dot) ? 0 : 255;
               pixel.Green = (dot) ? 0 : 255;
               pixel.Blue  = (dot) ? 0 : 255;
               bmp->SetPixel(x, y, pixel);
-              if (x & 3) addr++;
+              if ((x & 3) == 3) addr++;
             }
           }
           sprintf(file_name, "vid_%04d.bmp", bmp_idx);
