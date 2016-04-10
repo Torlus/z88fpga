@@ -41,8 +41,6 @@ output  [13:0]  vram_a;
 output  [3:0]   vram_do;
 output          vram_we;
 
-assign vram_we = sbar;  // output to vram when sba read is done
-
 // Internal screen registers
 reg     [5:0]   slin; // screen line (64)
 reg     [6:0]   scol; // screen column (108)
@@ -79,18 +77,28 @@ begin
     pix6f <= 1'b0;
     pix4f <= 1'b0;
     vram_a <= 14'd0;
+    vram_we <= 1'b0;
     // frame flag for BMP debug output
     frame <= 1'b0;
   end else begin
+
     // 1) Set SBA
     // ----------
     if (!sbar && clkcnt == 2'b10) begin
       // Z80 is active, data bus not to be used
       // screen base attribute address LSB (even) for next pulse
       r_va <= {sbr[10:0], slin[5:3], scol[6:0], 1'b0};
+
+      // Flush second nibble (remaining 4 pixels)
+      if (pix4f) begin
+        vrdo <= pix4b;  // Output remaining pixels (or do nothing if null char or only 2 pixels left)
+        vram_we <= 1'b1;
+      end
+
       // BMP done
       frame <= 1'b0;
     end
+
     // 2) Read SBA LSB
     // ---------------
     if (!sbar && clkcnt == 2'b00) begin
@@ -98,7 +106,15 @@ begin
       sba[7:0] <= cdi;
       // screen base attribute address MSB (odd) for next pulse
       r_va[0] <= 1'b1;
+      // Output done
+      vram_we <= 1'b0;
+      // Increment nibble counter if (!null and pixel buffer just flushed)
+      if (!nullch && pix4f) begin
+      vram_a[7:0] <= vram_a[7:0] + 1'b1;
+      pix4f <= 1'b0;
+      end
     end
+
     // 3) Read SBA MSB
     // ---------------
     if (!sbar && clkcnt == 2'b01) begin
@@ -111,6 +127,7 @@ begin
       sba[8] <= cdi[0];
       sbar <= 1'b1;
     end
+
     // 4) Set pixel data address
     // -------------------------
     if (sbar && clkcnt == 2'b10) begin
@@ -122,6 +139,7 @@ begin
       : (und && sba[8]) ? {pb3[10:0], sba[7:0], slin[2:0]}  // HRS=1; Hires1 (RAM)
         : {pb2[8:0], und, sba[8:0], slin[2:0]};                      // Hires0 (ROM)
     end
+
     // 5) Output pixel nibble
     // ----------------------
     if (sbar && clkcnt == 2'b00) begin
@@ -129,45 +147,44 @@ begin
       if (!hrs || cursor) begin
         // LRS or cursor
         if (pix6f) begin
-          // 2 pixels remaining in buffer sent with 2 left pixels
+          // 2 pixels remaining in buffer, output them with 2 left pixels
           vrdo <= {pix6b[1:0], cdi[5:4]};
+          vram_we <= 1'b1;
           pix4b <= cdi[3:0];
           pix4f <= 1'b1;
           pix6f <= 1'b0;
         end else begin
           // buffer empty, ouput 4 left pixels
           vrdo <= cdi[5:2];
+          vram_we <= 1'b1;
           pix6b[1:0] <= cdi[1:0];
           pix4f <= 1'b0;
           pix6f <= 1'b1;
         end
       end else begin
+        // HRS or null
         if (!nullch) begin
-          // HRS or null
+          // HRS, output first nibble, second in buffer
           vrdo <= cdi[7:4];
+          vram_we <= 1'b1;
           pix4b <= cdi[3:0];
           pix4f <= 1'b1;
           pix6f <= 1'b0;
         end else begin
+          // Null
           pix4f <= 1'b0;
           pix6f <= 1'b0;
         end
       end
-      if (!nullch) begin
-        vram_a[7:0] <= vram_a[7:0] + 1'b1;
-      end
-      hrso <= hrs;
-      revo <= rev;
-      flso <= fls;
-      gryo <= gry;
-      undo <= und;
     end
-    // 6) Output second nibble, increment counters
+
+    // 6) Increment counters
     // -------------------------------------------
     if (sbar && clkcnt == 2'b01) begin
       // Next cycle read sba
       sbar <= 1'b0;
-
+      // Output done
+      vram_we <= 1'b0;
       // Increment line/column counters and nibble counter
       if (scol == 7'd107) begin
         scol <= 7'd0;
@@ -183,13 +200,11 @@ begin
           vram_a[13:8] <= vram_a[13:8] + 1'b1;
         end
       end else begin
+        // Increment column
         scol <= scol + 1'b1;
-        if (pix4f) begin
-          vrdo <= pix4b;  // Output remaining pixels (or do nothing if null char or only 2 pixels left)
-          // Increment nibble counter if !null
+        // Increment vram address if required
+        if (!nullch) begin
           vram_a[7:0] <= vram_a[7:0] + 1'b1;
-          pix4f <= 1'b0;
-          pix6f <= 1'b0;
         end
       end
     end
@@ -203,20 +218,14 @@ wire    [3:0]   vrdo_rev;
 wire    [3:0]   vrdo_gry;
 wire    [3:0]   vrdo_fls;
 
-reg             hrso;
-reg             revo;
-reg             flso;
-reg             gryo;
-reg             undo;
-
 // Underline, full nibble if lores and eighth line
-assign vrdo_und = (undo && !hrso && slin[2:0] == 3'b111) ? 4'b1111 : vrdo;
+assign vrdo_und = (und && !hrs && slin[2:0] == 3'b111) ? 4'b1111 : vrdo;
 // Reverse, XORed nibble
-assign vrdo_rev = (revo) ? {!vrdo_und[3], !vrdo_und[2], !vrdo_und[1], !vrdo_und[0]}  : vrdo_und;
+assign vrdo_rev = (rev) ? {!vrdo_und[3], !vrdo_und[2], !vrdo_und[1], !vrdo_und[0]}  : vrdo_und;
 // Grey, 5ms flashing (probably)
-assign vrdo_gry = (gryo) ? vrdo_rev & {t_5ms, t_5ms,t_5ms,t_5ms} : vrdo_rev;
+assign vrdo_gry = (gry) ? vrdo_rev & {t_5ms, t_5ms,t_5ms,t_5ms} : vrdo_rev;
 // Flash, 1 second flashing
-assign vrdo_fls = (flso) ? vrdo_gry & {t_1s, t_1s, t_1s, t_1s} : vrdo_gry;
+assign vrdo_fls = (fls) ? vrdo_gry & {t_1s, t_1s, t_1s, t_1s} : vrdo_gry;
 // Output nibble to VRAM frame buffer
 assign vram_do = vrdo_fls;
 
