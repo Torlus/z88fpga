@@ -57,6 +57,9 @@ reg     [1:0]   pix6b;  // pixel buffer for lores (6 pixels wide)
 reg     [3:0]   pix4b;  // pixel buffer for second step output
 reg             pix6f;  // flag for 2 pixels remaining in pix6b
 reg             pix4f;
+reg             pix6e;  // flag for mixed effect (apply previous und/rev on 2 left pixels)
+reg             prev;   // previous reverse effect
+reg             pund;   // previous underline effect
 
 assign va = r_va;
 
@@ -75,6 +78,7 @@ begin
     slin <= 6'd0;
     scol <= 7'd0;
     pix6f <= 1'b0;
+    pix6e <= 1'b0;
     pix4f <= 1'b0;
     vram_a <= 14'd0;
     vram_we <= 1'b0;
@@ -108,6 +112,9 @@ begin
       r_va[0] <= 1'b1;
       // Output done
       vram_we <= 1'b0;
+      // Keep previous effects
+      prev <= rev;
+      pund <= und;
       // Increment nibble counter if (!null and pixel buffer just flushed)
       if (!nullch && pix4f) begin
       vram_a[7:0] <= vram_a[7:0] + 1'b1;
@@ -153,6 +160,7 @@ begin
           pix4b <= cdi[3:0];
           pix4f <= 1'b1;
           pix6f <= 1'b0;
+          pix6e <= 1'b1;
         end else begin
           // buffer empty, ouput 4 left pixels
           vrdo <= cdi[5:2];
@@ -185,6 +193,7 @@ begin
       sbar <= 1'b0;
       // Output done
       vram_we <= 1'b0;
+      pix6e <= 1'b0;
       // Increment line/column counters and nibble counter
       if (scol == 7'd107) begin
         scol <= 7'd0;
@@ -219,9 +228,14 @@ wire    [3:0]   vrdo_gry;
 wire    [3:0]   vrdo_fls;
 
 // Underline, full nibble if lores and eighth line
-assign vrdo_und = (und && !hrs && slin[2:0] == 3'b111) ? 4'b1111 : vrdo;
+assign vrdo_und = (pix6e) ?
+(!hrs && slin[2:0] == 3'b111) ? {vrdo[3] | pund, vrdo[2] | pund, vrdo[1] | und, vrdo[0] | und} : vrdo
+: (und && !hrs && slin[2:0] == 3'b111) ? 4'b1111 : vrdo;
 // Reverse, XORed nibble
-assign vrdo_rev = (rev) ? {!vrdo_und[3], !vrdo_und[2], !vrdo_und[1], !vrdo_und[0]}  : vrdo_und;
+assign vrdo_rev[3:2] = (pix6e) ?
+(prev) ? {!vrdo_und[3], !vrdo_und[2]} : vrdo_und[3:2]
+: (rev) ? {!vrdo_und[3], !vrdo_und[2]}  : vrdo_und[3:2];
+assign vrdo_rev[1:0] = (rev) ? {!vrdo_und[1], !vrdo_und[0]} : vrdo_und[1:0];
 // Grey, 5ms flashing (probably)
 assign vrdo_gry = (gry) ? vrdo_rev & {t_5ms, t_5ms,t_5ms,t_5ms} : vrdo_rev;
 // Flash, 1 second flashing
