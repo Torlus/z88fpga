@@ -10,12 +10,12 @@ t_1s, t_5ms,
 
 // Outputs:
 va,
-vram_a, vram_do, vram_we,
-frame
+o_vram_a, o_vram_do, o_vram_we,
+o_frame
 );
 
 // BMP debug output
-output          frame;
+output          o_frame;
 
 // Clocks and control
 input           mck;
@@ -37,9 +37,9 @@ input   [7:0]   cdi;
 output  [21:0]  va;
 
 // VRAM buffer
-output  [13:0]  vram_a;
-output  [3:0]   vram_do;
-output          vram_we;
+output  [13:0]  o_vram_a;
+output  [3:0]   o_vram_do;
+output          o_vram_we;
 
 // Internal screen registers
 reg     [5:0]   slin; // screen line (64)
@@ -60,6 +60,17 @@ reg             pix4f;
 reg             pix6e;  // flag for mixed effect (apply previous und/rev on 2 left pixels)
 reg             prev;   // previous reverse effect
 reg             pund;   // previous underline effect
+
+reg  [13:0]  vram_a;
+// reg  [3:0]   vram_do;
+reg          vram_we;
+reg          frame;
+
+
+assign o_vram_a = vram_a;
+// assign o_vram_do = vram_do;
+assign o_vram_we = vram_we;
+assign o_frame = frame;
 
 assign va = r_va;
 
@@ -221,7 +232,7 @@ begin
 end
 
 // Apply effects
-wire    [3:0]   vrdo;
+reg    [3:0]   vrdo;
 wire    [3:0]   vrdo_und;
 wire    [3:0]   vrdo_rev;
 wire    [3:0]   vrdo_gry;
@@ -241,6 +252,6 @@ assign vrdo_gry = (gry) ? vrdo_rev & {t_5ms, t_5ms,t_5ms,t_5ms} : vrdo_rev;
 // Flash, 1 second flashing
 assign vrdo_fls = (fls) ? vrdo_gry & {t_1s, t_1s, t_1s, t_1s} : vrdo_gry;
 // Output nibble to VRAM frame buffer
-assign vram_do = vrdo_fls;
+assign o_vram_do = vrdo_fls;
 
 endmodule

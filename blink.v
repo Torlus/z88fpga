@@ -76,7 +76,7 @@ output          intb_n;   // INT
 // output          rts;      // RTS handshaking
 
 // Keyboard
-input           kbmat;
+input   [63:0]     kbmat;
 
 // Screen
 output          lcdon;
@@ -85,6 +85,11 @@ output  [9:0]   pb1w;
 output  [8:0]   pb2w;
 output  [10:0]  pb3w;
 output  [10:0]  sbrw;
+
+assign se1_n = 1'b1;
+assign se2_n = 1'b1;
+assign se3_n = 1'b1;
+
 
 // Reset
 assign rout_n = rin_n;
@@ -208,7 +213,7 @@ begin
 end
 
 // Keyboard
-reg     [63:0]  kbmat;
+// reg     [63:0]  kbmat;
 wire    [7:0]   kbcol[0:7];
 wire    [7:0]   kbd;
 

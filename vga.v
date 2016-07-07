@@ -4,7 +4,7 @@
 module vga (
 clk25, reset_n, lcdon,
 vram_a, vram_di,
-href, vsync, rgb
+o_href, o_vsync, rgb, vcnt
 );
 
 input											clk25;
@@ -13,9 +13,10 @@ input											lcdon;
 input			[3:0]						vram_di;
 
 output		[13:0]					vram_a;
-output										href;
-output										vsync;
+output										o_href;
+output										o_vsync;
 output		[11:0]					rgb;
+output		[9:0]						vcnt;
 
 `define BLACK 12'b000000000000
 `define WHITE 12'b111111111111
@@ -23,17 +24,26 @@ output		[11:0]					rgb;
 reg 			[9:0]						hcount;
 reg				[9:0]						vcount;
 
+assign vcnt = { vcount[9:1], reset_n };
+
+reg href;
+reg vsync;
+
+assign o_href = href;
+assign o_vsync = vsync;
+
 always @(posedge clk25) begin
-	if (!reset_n || !lcdon) begin
+	// if (!reset_n || !lcdon) begin
+	if (reset_n == 1'b0) begin
 		hcount <= 10'd0;
 		vcount <= 10'd0;
 	end else begin
 		if (hcount < 10'd799) begin
-			hcount <= hcount + 1'b1;
+			hcount <= hcount + 10'd1;
 		end else begin
 			hcount <= 10'd0;
 			if (vcount < 10'd525) begin
-			vcount <= vcount + 1'b1;
+			vcount <= vcount + 10'd1;
 			end else begin
 			vcount <= 10'd0;
 			end
@@ -42,7 +52,8 @@ always @(posedge clk25) begin
 end
 
 always @(posedge clk25) begin
-	if(!reset_n || !lcdon) begin
+	// if(!reset_n || !lcdon) begin
+	if(!reset_n) begin
 		href <= 1'b0;
 		vsync <= 1'b0;
 	end else begin
@@ -72,8 +83,10 @@ assign pixel = (hcount[1]) ?
 	(hcount[0]) ? vram_di[0] : vram_di[1]
 	: (hcount[0]) ? vram_di[2] : vram_di[3];
 
-assign rgb = (line == 6'b111111 || nibble == 8'b11111111) ?
-	`WHITE
-	: (pixel) ? `BLACK : `WHITE;
+//assign rgb = (line == 6'b111111 || nibble == 8'b11111111) ?
+//	`WHITE
+//	: (pixel) ? `BLACK : `WHITE;
+
+assign rgb = 12'b111100001111;
 
 endmodule

@@ -3,3 +3,7 @@ obj_dir
 *.vcd
 *.log
 *.bmp
+syn/db
+syn/output_files
+syn/blackbox_tmp
+

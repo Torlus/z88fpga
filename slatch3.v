@@ -24,23 +24,32 @@ input   d2;
 
 reg     r;
 
+reg  r_ack0;
+reg  r_ack1;
+reg  r_ack2;
+
 assign q = r;
+
+assign ack0 = r_ack0;
+assign ack1 = r_ack1;
+assign ack2 = r_ack2;
+
 
 always @(posedge clk)
 begin
   if (!res_n) begin
     r <= di;
-    ack0 <= 1'b0;
-    ack1 <= 1'b0;
-    ack2 <= 1'b0;
+    r_ack0 <= 1'b0;
+    r_ack1 <= 1'b0;
+    r_ack2 <= 1'b0;
   end else begin
-    if (!req0) begin ack0 <= 1'b0; end
-    if (!req1) begin ack1 <= 1'b0; end
-    if (!req2) begin ack2 <= 1'b0; end
+    if (!req0) begin r_ack0 <= 1'b0; end
+    if (!req1) begin r_ack1 <= 1'b0; end
+    if (!req2) begin r_ack2 <= 1'b0; end
 
-    if (req0 & !ack0) begin r <= d0; ack0 <= 1'b1; end
-    else if (req1 & !ack1) begin r <= d1; ack1 <= 1'b1; end
-    else if (req2 & !ack2) begin r <= d2; ack2 <= 1'b1; end
+    if (req0 & !r_ack0) begin r <= d0; r_ack0 <= 1'b1; end
+    else if (req1 & !r_ack1) begin r <= d1; r_ack1 <= 1'b1; end
+    else if (req2 & !r_ack2) begin r <= d2; r_ack2 <= 1'b1; end
   end
 end
 

@@ -5,10 +5,10 @@ module z88 (
   vram_wp_a, vram_wp_we, vram_wp_di,
   vram_rp_a,
   href, vsync, rgb,
-  frame,
+  frame, vcnt,
 
   // Inputs
-  clk, reset_n,
+  clk, clk25, reset_n,
   ps2clk, ps2dat,
   ram_do,
   rom_do,
@@ -16,11 +16,14 @@ module z88 (
   flap
 );
 
+output [9:0] vcnt;
+
 // BMP debug output
 output          frame;
 
 // Clocks, Reset switch, Flap switch
 input           clk;
+input           clk25;
 input           reset_n;
 input           flap;  // normaly closed =0, open =1
 
@@ -123,7 +126,7 @@ tv80s z80 (
   .cen(z88_pm1)
 );
 
-assign z88_nmi_n = 1'b1;
+// assign z88_nmi_n = 1'b1;
 
 assign z88_reset_n = reset_n;
 
@@ -180,12 +183,12 @@ screen thescreen (
   .pb3(z88_pb3),
   .sbr(z88_sbr),
   .va(z88_va),
-  .vram_a(vram_wp_a),
-  .vram_do(vram_wp_di),
-  .vram_we(vram_wp_we),
+  .o_vram_a(vram_wp_a),
+  .o_vram_do(vram_wp_di),
+  .o_vram_we(vram_wp_we),
   .t_1s(z88_t1s),
   .t_5ms(z88_t5ms),
-  .frame(frame)
+  .o_frame(frame)
 );
 
 // Internal RAM (Slot 0)
@@ -216,14 +219,16 @@ ps2 theps2 (
 
 // VGA output
 vga thevga (
-  .clk25(clk),            // /!\ 25.175MHz clock
-  .reset_n(z88_rout_n),
+  .clk25(clk25),            // /!\ 25.175MHz clock
+  // .reset_n(z88_rout_n),
+  .reset_n(reset_n),
   .lcdon(z88_lcdon),
   .vram_a(vram_rp_a),
   .vram_di(vram_rp_do),
-  .href(href),
-  .vsync(vsync),
-  .rgb(rgb)
+  .o_href(href),
+  .o_vsync(vsync),
+  .rgb(rgb),
+  .vcnt(vcnt)
   );
 
 endmodule
