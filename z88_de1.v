@@ -50,26 +50,18 @@ output        SRAM_OE_N;
 output        SRAM_UB_N;
 output        SRAM_WE_N;
 
-
-
-
-
-
-
-
-
-
 // Clocks, Reset switch, Flap switch
 wire           clk;
 wire           reset_n;
 wire           flap;  // normaly closed =0, open =1
+wire           t_1s;
 
 // PS/2
 wire           ps2clk;
 wire           ps2dat;
 
 // VGA
-wire          hsync;
+wire          href;
 wire          vsync;
 wire  [11:0]  rgb;
 
@@ -96,23 +88,22 @@ wire  [13:0]  vram_rp_a;
 wire   [3:0]  vram_rp_do;
 
 wire          clk25;
-wire   [9:0]  vcnt;
 
 assign  reset_n = SW[0];
 assign  flap = SW[1];
 
-assign  HEX0 = 7'd1;
-assign  HEX1 = 7'd1;
-assign  HEX2 = 7'd1;
-assign  HEX3 = 7'd1;
+assign  HEX0 = 7'd0;
+assign  HEX1 = 7'd0;
+assign  HEX2 = 7'd0;
+assign  HEX3 = 7'd0;
 
-assign  LEDR = vcnt;
-assign  LEDG = { SW[7:1] , reset_n };
+assign  LEDR = SW[9:0];
+assign  LEDG = {t_1s, 5'd0, flap, reset_n};
 
 assign  ps2clk = PS2_CLK;
 assign  ps2dat = PS2_DAT;
 
-assign  VGA_HS = hsync;
+assign  VGA_HS = href;
 assign  VGA_VS = vsync;
 assign  VGA_R = rgb[3:0];
 assign  VGA_G = rgb[7:4];
@@ -135,7 +126,7 @@ assign  SRAM_OE_N = ram_oe_n;
 assign  SRAM_WE_N = ram_we_n;
 
 assign  ram_do = (ram_a[0] == 1'b0) ? SRAM_DQ[7:0] : SRAM_DQ[15:8];
-assign  SRAM_DQ = (ram_we_n) ? { ram_di, ram_di } : 16'bZZZZZZZZ_ZZZZZZZZ;
+assign  SRAM_DQ = (!ram_we_n) ? { ram_di, ram_di } : 16'bZZZZZZZZ_ZZZZZZZZ;
 
 z88_de1_pll pll (
   .inclk0(CLOCK_50),
@@ -172,11 +163,12 @@ z88 z88de1 (
   .vram_wp_di(vram_wp_di),
   .vram_rp_a(vram_rp_a),
 
-  .href(hsync),
+  .clk25(clk25),
+  .href(href),
   .vsync(vsync),
   .rgb(rgb),
   .frame(),
-  .vcnt(vcnt),
+  .t_1s(t_1s),
 
   .clk(clk),
   .reset_n(reset_n),

@@ -5,7 +5,7 @@ module z88 (
   vram_wp_a, vram_wp_we, vram_wp_di,
   vram_rp_a,
   href, vsync, rgb,
-  frame, vcnt,
+  frame, t_1s,
 
   // Inputs
   clk, clk25, reset_n,
@@ -16,10 +16,9 @@ module z88 (
   flap
 );
 
-output [9:0] vcnt;
-
 // BMP debug output
 output          frame;
+output          t_1s;
 
 // Clocks, Reset switch, Flap switch
 input           clk;
@@ -103,6 +102,8 @@ wire            z88_t5ms;
 
 // Clocks
 assign z88_mck = clk;
+assign t_1s = z88_t1s;
+
 
 // Z80 instance
 tv80s z80 (
@@ -224,11 +225,10 @@ vga thevga (
   .reset_n(reset_n),
   .lcdon(z88_lcdon),
   .vram_a(vram_rp_a),
-  .vram_di(vram_rp_do),
+  .vram_do(vram_rp_do),
   .o_href(href),
   .o_vsync(vsync),
-  .rgb(rgb),
-  .vcnt(vcnt)
+  .rgb(rgb)
   );
 
 endmodule
