@@ -4,7 +4,7 @@ obj_dir
 *.log
 *.bmp
 syn/db
-sys/incremental_db
+syn/incremental_db
 syn/output_files
 syn/blackbox_tmp
 
