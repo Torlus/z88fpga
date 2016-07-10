@@ -25,8 +25,8 @@ input   [1:0] CLOCK_24;
 input         CLOCK_50;
 input         EXT_CLOCK;
 
-output        PS2_CLK;
-input         PS2_DAT;
+inout         PS2_CLK;
+inout         PS2_DAT;
 
 output  [3:0] VGA_R;
 output  [3:0] VGA_G;
@@ -40,7 +40,6 @@ output        FL_OE_N;
 output        FL_RST_N;
 output        FL_WE_N;
 output        FL_CE_N;
-
 
 output  [17:0]  SRAM_ADDR;
 output        SRAM_CE_N;
@@ -56,13 +55,14 @@ wire           reset_n;
 wire           flap;  // normaly closed =0, open =1
 wire           t_1s;
 
-// PS/2
+// PS2 to Keyboard
+wire [63:0]    kbmatrix;
 wire           ps2clk;
 wire           ps2dat;
 wire [7:0]     ps2key;
 
-
 // VGA
+wire          clk25;
 wire          href;
 wire          vsync;
 wire  [11:0]  rgb;
@@ -85,68 +85,25 @@ wire          rom_oe_n;
 wire  [13:0]  vram_wp_a;
 wire          vram_wp_we;
 wire  [3:0]   vram_wp_di;
-
 wire  [13:0]  vram_rp_a;
 wire   [3:0]  vram_rp_do;
 
-wire          clk25;
 
 assign  reset_n = SW[0];
 assign  flap = SW[1];
 
-reg [6:0] r_hex0;
-reg [6:0] r_hex1;
-
-always @(posedge ps2clk)
-begin
-    case (ps2key[7:4])
-        4'b0000 : r_hex1 <= 7'b1111110;
-        4'b0001 : r_hex1 <= 7'b0110000;
-        4'b0010 : r_hex1 <= 7'b1101101;
-        4'b0011 : r_hex1 <= 7'b1111001;
-        4'b0100 : r_hex1 <= 7'b0110011;
-        4'b0101 : r_hex1 <= 7'b1011011;
-        4'b0110 : r_hex1 <= 7'b1011111;
-        4'b0111 : r_hex1 <= 7'b1110000;
-        4'b1000 : r_hex1 <= 7'b1111111;
-        4'b1001 : r_hex1 <= 7'b1111011;
-        4'b1010 : r_hex1 <= 7'b1110111;
-        4'b1011 : r_hex1 <= 7'b0011111;
-        4'b1100 : r_hex1 <= 7'b1001110;
-        4'b1101 : r_hex1 <= 7'b0111101;
-        4'b1110 : r_hex1 <= 7'b1001111;
-        4'b1111 : r_hex1 <= 7'b1000111;
-     endcase
-     case (ps2key[3:0])
-         4'b0000 : r_hex0 <= 7'b1111110;
-         4'b0001 : r_hex0 <= 7'b0110000;
-         4'b0010 : r_hex0 <= 7'b1101101;
-         4'b0011 : r_hex0 <= 7'b1111001;
-         4'b0100 : r_hex0 <= 7'b0110011;
-         4'b0101 : r_hex0 <= 7'b1011011;
-         4'b0110 : r_hex0 <= 7'b1011111;
-         4'b0111 : r_hex0 <= 7'b1110000;
-         4'b1000 : r_hex0 <= 7'b1111111;
-         4'b1001 : r_hex0 <= 7'b1111011;
-         4'b1010 : r_hex0 <= 7'b1110111;
-         4'b1011 : r_hex0 <= 7'b0011111;
-         4'b1100 : r_hex0 <= 7'b1001110;
-         4'b1101 : r_hex0 <= 7'b0111101;
-         4'b1110 : r_hex0 <= 7'b1001111;
-         4'b1111 : r_hex0 <= 7'b1000111;
-      endcase
-end
-
-assign  HEX0 = r_hex0;
-assign  HEX1 = r_hex1;
-assign  HEX2 = 7'd0;
-assign  HEX3 = 7'd0;
+assign  HEX0 = 7'h7F;
+assign  HEX1 = 7'h7F;
+assign  HEX2 = 7'h7F;
+assign  HEX3 = 7'h7F;
 
 assign  LEDR = SW[9:0];
 assign  LEDG = {t_1s, 5'd0, flap, reset_n};
 
-assign  PS2_CLK = ps2clk;
+assign  ps2clk = PS2_CLK;
 assign  ps2dat = PS2_DAT;
+assign  PS2_CLK = (!reset_n) ? 1'b0 : 1'bZ;
+assign  PS2_DAT = (!reset_n) ? 1'b0 : 1'bZ;
 
 assign  VGA_HS = href;
 assign  VGA_VS = vsync;
@@ -154,6 +111,7 @@ assign  VGA_R = rgb[3:0];
 assign  VGA_G = rgb[7:4];
 assign  VGA_B = rgb[11:8];
 
+// 4MB Flash to 512KB Flash
 assign  FL_ADDR = { 3'b0, rom_a[18:0] };
 assign  FL_OE_N = rom_oe_n;
 assign  FL_CE_N = rom_ce_n;
@@ -162,31 +120,24 @@ assign  FL_WE_N = 1'b1;
 assign  rom_do = FL_DQ;
 assign  FL_DQ = 8'bZZZZZZZZ;
 
-
+// 256K*16b SRAM to 512KB SRAM
 assign  SRAM_ADDR[17:0] = ram_a[18:1];
 assign  SRAM_UB_N = (ram_a[0] == 1'b0) ? 1'b1 : 1'b0;
 assign  SRAM_LB_N = (ram_a[0] == 1'b0) ? 1'b0 : 1'b1;
 assign  SRAM_CE_N = ram_ce_n;
 assign  SRAM_OE_N = ram_oe_n;
 assign  SRAM_WE_N = ram_we_n;
-
 assign  ram_do = (ram_a[0] == 1'b0) ? SRAM_DQ[7:0] : SRAM_DQ[15:8];
 assign  SRAM_DQ = (!ram_we_n) ? { ram_di, ram_di } : 16'bZZZZZZZZ_ZZZZZZZZ;
 
+// Clocks
 z88_de1_pll pll (
   .inclk0(CLOCK_50),
-  .c0(clk25),
-  .c1(clk)
+  .c0(clk25),           // VGA clock
+  .c1(clk)              // master clock
 );
 
-// ps2clk = 10MHz/512 = 19.5KHz
-reg   [8:0] clk20k;
-always @(posedge clk)
-begin
-  clk20k <= clk20k + 9'd1;
-end
-assign ps2clk = clk20k[8];
-
+// 8KB VRAM
 vram video (
   .data(vram_wp_di),
   .rdaddress(vram_rp_a),
@@ -197,7 +148,7 @@ vram video (
   .q(vram_rp_do),
 );
 
-
+// Z88 instance
 z88 z88de1 (
   .ram_a(ram_a),
   .ram_di(ram_di),
@@ -214,6 +165,8 @@ z88 z88de1 (
   .vram_wp_di(vram_wp_di),
   .vram_rp_a(vram_rp_a),
 
+  .kbmatrix(kbmatrix),
+
   .clk25(clk25),
   .href(href),
   .vsync(vsync),
@@ -223,13 +176,19 @@ z88 z88de1 (
 
   .clk(clk),
   .reset_n(reset_n),
-  .ps2clk(ps2clk),
-  .ps2dat(ps2dat),
-  .ps2key(ps2key),
   .ram_do(ram_do),
   .rom_do(rom_do),
   .vram_rp_do(vram_rp_do),
   .flap(flap)
+);
+
+// PS2 controller
+ps2 theps2 (
+  .reset_n(reset_n),
+  .ps2clk(ps2clk),
+  .ps2dat(ps2dat),
+  .kbmat_out(kbmatrix),
+  .ps2key(ps2key)
 );
 
 endmodule

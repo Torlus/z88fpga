@@ -6,38 +6,35 @@ module z88 (
   vram_rp_a,
   href, vsync, rgb,
   frame, t_1s,
-  ps2key,
 
   // Inputs
   clk, clk25, reset_n,
-  ps2clk, ps2dat,
   ram_do,
   rom_do,
   vram_rp_do,
-  flap
+  flap,
+  kbmatrix
 );
 
-// BMP debug output
-output          frame;
-output          t_1s;
+// Debug output
+output          frame;  // BMP generator
+output          t_1s;   // 1 second blinking LED
 
 // Clocks, Reset switch, Flap switch
 input           clk;
 input           clk25;
 input           reset_n;
-input           flap;  // normaly closed =0, open =1
+input           flap;  // normally closed =0, open =1
 
-// PS/2
-input           ps2clk;
-input           ps2dat;
-output          ps2key;
+// Keyboard matrix
+input   [63:0]  kbmatrix; // 8*8 keys
 
 // VGA
 output          href;
 output          vsync;
 output  [11:0]  rgb;
 
-// Internal RAM
+// Internal RAM (512KB)
 output  [18:0]  ram_a;
 output  [7:0]   ram_di;
 input   [7:0]   ram_do;
@@ -45,22 +42,18 @@ output          ram_ce_n;
 output          ram_oe_n;
 output          ram_we_n;
 
-// Internal ROM
+// Internal ROM (512KB)
 output  [18:0]  rom_a;
 input   [7:0]   rom_do;
 output          rom_ce_n;
 output          rom_oe_n;
 
-// Dual-port VRAM
+// Dual-port VRAM (8KB)
 output  [13:0]  vram_wp_a;
 output          vram_wp_we;
 output  [3:0]   vram_wp_di;
-
 output  [13:0]  vram_rp_a;
 input   [3:0]   vram_rp_do;
-
-// Z80
-wire    [7:0]   z80_do;
 
 // Z88 PCB glue
 wire            z88_mck;      // master clock
@@ -78,6 +71,7 @@ wire            z88_nmi_n;
 wire            z88_busrq_n;
 wire    [21:0]  z88_ma;
 wire    [15:0]  z88_ca;
+wire    [7:0]   z80_do;
 wire    [7:0]   z80_cdi;
 wire    [7:0]   vid_cdi;
 wire    [7:0]   z88_cdi;
@@ -102,10 +96,29 @@ wire    [21:0]  z88_va;
 wire            z88_t1s;
 wire            z88_t5ms;
 
-// Clocks
+assign z88_reset_n = reset_n;
 assign z88_mck = clk;
 assign t_1s = z88_t1s;
+assign z88_kbmat = kbmatrix;
+// assign z88_nmi_n   /!\ Flap open, Power failure or Card insertion
 
+// Internal RAM (Slot 0)
+assign ram_a = z88_ma[18:0];
+assign ram_di = z80_do;
+assign ram_we_n = z88_wrb_n;
+assign ram_oe_n = z88_roe_n;
+assign ram_ce_n = z88_irce_n;
+
+// Internal ROM (Slot 0)
+assign rom_a = z88_ma[18:0];
+assign rom_oe_n = z88_roe_n;
+assign rom_ce_n = z88_ipce_n;
+
+assign z88_cdi = (!z88_ipce_n && !z88_roe_n) ? rom_do
+                : (!z88_irce_n & !z88_roe_n) ? ram_do
+                : (!z88_iorq_n & z88_rd_n) ? z80_do
+                : (!z88_mreq_n & z88_rd_n) ? z80_do
+                : 8'b11111111;
 
 // Z80 instance
 tv80s z80 (
@@ -129,9 +142,6 @@ tv80s z80 (
   .cen(z88_pm1)
 );
 
-// assign z88_nmi_n = 1'b1;
-
-assign z88_reset_n = reset_n;
 
 // Blink instance
 blink theblink (
@@ -194,32 +204,6 @@ screen thescreen (
   .o_frame(frame)
 );
 
-// Internal RAM (Slot 0)
-assign ram_a = z88_ma[18:0];
-assign ram_di = z80_do;
-assign ram_we_n = z88_wrb_n;
-assign ram_oe_n = z88_roe_n;
-assign ram_ce_n = z88_irce_n;
-
-// Internal ROM (Slot 0)
-assign rom_a = z88_ma[18:0];
-assign rom_oe_n = z88_roe_n;
-assign rom_ce_n = z88_ipce_n;
-
-assign z88_cdi = (!z88_ipce_n && !z88_roe_n) ? rom_do
-                : (!z88_irce_n & !z88_roe_n) ? ram_do
-                : (!z88_iorq_n & z88_rd_n) ? z80_do
-                : (!z88_mreq_n & z88_rd_n) ? z80_do
-                : 8'b11111111;
-
-// PS/2 keyboard
-ps2 theps2 (
-  .reset_n(z88_rout_n),
-  .ps2clk(ps2clk),
-  .ps2dat(ps2dat),
-  .kbmat_out(z88_kbmat),
-  .ps2key(ps2key)
-);
 
 // VGA output
 vga thevga (
