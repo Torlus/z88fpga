@@ -6,6 +6,7 @@ module z88 (
   vram_rp_a,
   href, vsync, rgb,
   frame, t_1s,
+  ps2key,
 
   // Inputs
   clk, clk25, reset_n,
@@ -29,6 +30,7 @@ input           flap;  // normaly closed =0, open =1
 // PS/2
 input           ps2clk;
 input           ps2dat;
+output          ps2key;
 
 // VGA
 output          href;
@@ -215,14 +217,15 @@ ps2 theps2 (
   .reset_n(z88_rout_n),
   .ps2clk(ps2clk),
   .ps2dat(ps2dat),
-  .kbmat_out(z88_kbmat)
+  .kbmat_out(z88_kbmat),
+  .ps2key(ps2key)
 );
 
 // VGA output
 vga thevga (
   .clk25(clk25),            // /!\ 25.175MHz clock
-  // .reset_n(z88_rout_n),
-  .reset_n(reset_n),
+  .reset_n(z88_rout_n),
+//  .reset_n(reset_n),
   .lcdon(z88_lcdon),
   .vram_a(vram_rp_a),
   .vram_do(vram_rp_do),

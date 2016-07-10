@@ -3,7 +3,7 @@ module ps2(
   reset_n, ps2clk, ps2dat,
 
   // Outputs
-  kbmat_out
+  kbmat_out, ps2key
 );
 
 input           reset_n;
@@ -11,6 +11,7 @@ input           ps2clk;
 input           ps2dat;
 
 output  [63:0]  kbmat_out;
+output  [7:0]   ps2key;
 
 // ps2 conversion
 reg     [7:0]   ps2key;     // scan code
@@ -24,7 +25,7 @@ reg     [63:0]  kbmat;      // shifted to kbd port according A8-A15
 
 assign kbmat_out = kbmat;
 
-always @(negedge ps2clk)
+always @(posedge ps2clk)
 begin
   if (reset_n == 1'b0) begin
     ps2ok <= 1'b0;
@@ -62,8 +63,9 @@ begin
   end
 end
 
-always @(posedge ps2ok)
+always @(posedge ps2clk)
 begin
+if (ps2ok && reset_n) begin
   case(ps2key[7:0])
     //  A8 column
     8'h3E: kbmat[0]  <= ~extkey & ~rlskey;   // 8
@@ -137,8 +139,9 @@ begin
     8'h76: kbmat[61] <= ~extkey & ~rlskey;  // Esc
     8'h11: kbmat[62] <=           ~rlskey;  // [] (Alt)
     8'h59: kbmat[63] <= ~extkey & ~rlskey;  // RShift
-    default: ;
+    default: kbmat[63-0] <= 64'b0;
   endcase
+end
 end
 
 endmodule

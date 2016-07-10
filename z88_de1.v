@@ -25,7 +25,7 @@ input   [1:0] CLOCK_24;
 input         CLOCK_50;
 input         EXT_CLOCK;
 
-input         PS2_CLK;
+output        PS2_CLK;
 input         PS2_DAT;
 
 output  [3:0] VGA_R;
@@ -59,6 +59,8 @@ wire           t_1s;
 // PS/2
 wire           ps2clk;
 wire           ps2dat;
+wire [7:0]     ps2key;
+
 
 // VGA
 wire          href;
@@ -92,15 +94,58 @@ wire          clk25;
 assign  reset_n = SW[0];
 assign  flap = SW[1];
 
-assign  HEX0 = 7'd0;
-assign  HEX1 = 7'd0;
+reg [6:0] r_hex0;
+reg [6:0] r_hex1;
+
+always @(posedge ps2clk)
+begin
+    case (ps2key[7:4])
+        4'b0000 : r_hex1 <= 7'b1111110;
+        4'b0001 : r_hex1 <= 7'b0110000;
+        4'b0010 : r_hex1 <= 7'b1101101;
+        4'b0011 : r_hex1 <= 7'b1111001;
+        4'b0100 : r_hex1 <= 7'b0110011;
+        4'b0101 : r_hex1 <= 7'b1011011;
+        4'b0110 : r_hex1 <= 7'b1011111;
+        4'b0111 : r_hex1 <= 7'b1110000;
+        4'b1000 : r_hex1 <= 7'b1111111;
+        4'b1001 : r_hex1 <= 7'b1111011;
+        4'b1010 : r_hex1 <= 7'b1110111;
+        4'b1011 : r_hex1 <= 7'b0011111;
+        4'b1100 : r_hex1 <= 7'b1001110;
+        4'b1101 : r_hex1 <= 7'b0111101;
+        4'b1110 : r_hex1 <= 7'b1001111;
+        4'b1111 : r_hex1 <= 7'b1000111;
+     endcase
+     case (ps2key[3:0])
+         4'b0000 : r_hex0 <= 7'b1111110;
+         4'b0001 : r_hex0 <= 7'b0110000;
+         4'b0010 : r_hex0 <= 7'b1101101;
+         4'b0011 : r_hex0 <= 7'b1111001;
+         4'b0100 : r_hex0 <= 7'b0110011;
+         4'b0101 : r_hex0 <= 7'b1011011;
+         4'b0110 : r_hex0 <= 7'b1011111;
+         4'b0111 : r_hex0 <= 7'b1110000;
+         4'b1000 : r_hex0 <= 7'b1111111;
+         4'b1001 : r_hex0 <= 7'b1111011;
+         4'b1010 : r_hex0 <= 7'b1110111;
+         4'b1011 : r_hex0 <= 7'b0011111;
+         4'b1100 : r_hex0 <= 7'b1001110;
+         4'b1101 : r_hex0 <= 7'b0111101;
+         4'b1110 : r_hex0 <= 7'b1001111;
+         4'b1111 : r_hex0 <= 7'b1000111;
+      endcase
+end
+
+assign  HEX0 = r_hex0;
+assign  HEX1 = r_hex1;
 assign  HEX2 = 7'd0;
 assign  HEX3 = 7'd0;
 
 assign  LEDR = SW[9:0];
 assign  LEDG = {t_1s, 5'd0, flap, reset_n};
 
-assign  ps2clk = PS2_CLK;
+assign  PS2_CLK = ps2clk;
 assign  ps2dat = PS2_DAT;
 
 assign  VGA_HS = href;
@@ -134,7 +179,13 @@ z88_de1_pll pll (
   .c1(clk)
 );
 
-// assign clk = clk25;
+// ps2clk = 10MHz/512 = 19.5KHz
+reg   [8:0] clk20k;
+always @(posedge clk)
+begin
+  clk20k <= clk20k + 9'd1;
+end
+assign ps2clk = clk20k[8];
 
 vram video (
   .data(vram_wp_di),
@@ -174,6 +225,7 @@ z88 z88de1 (
   .reset_n(reset_n),
   .ps2clk(ps2clk),
   .ps2dat(ps2dat),
+  .ps2key(ps2key),
   .ram_do(ram_do),
   .rom_do(rom_do),
   .vram_rp_do(vram_rp_do),

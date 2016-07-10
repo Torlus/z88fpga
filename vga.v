@@ -17,8 +17,8 @@ output										o_href;
 output										o_vsync;
 output		[11:0]					rgb;
 
-`define BLACK 12'b111111111111
-`define WHITE 12'b000000000000
+`define BLACK 12'b000000000000
+`define WHITE 12'b111111111111
 
 reg 			[9:0]						hcount;
 reg				[8:0]						vcount;
@@ -32,22 +32,20 @@ assign 										o_vsync = ~vsync;
 
 always @(posedge clk25) begin
   if (!reset_n || !lcdon) begin
-//	if (!reset_n) begin
-		hcount <= 0;
-		vcount <= 0;
+		hcount <= 10'd0;
+		vcount <= 9'd0;
 	end else begin
 		if (hmax) begin
-			hcount <= 0;
-			vcount <= vcount + 1;
+			hcount <= 10'd0;
+			vcount <= vcount + 9'd1;
 		end else begin
-			hcount <= hcount + 1;
+			hcount <= hcount + 10'd1;
 		end
 	end
 end
 
 always @(posedge clk25) begin
   if(!reset_n || !lcdon) begin
-//	if(!reset_n) begin
 		href <= 1'b0;
 		vsync <= 1'b0;
 	end else begin
@@ -60,8 +58,8 @@ wire				[5:0]			line;
 wire				[7:0]			nibble;
 wire									pixel;
 
-assign line = (vcount <= 6'd63) ? vcount[5:0] : 6'b111111;
-assign nibble = (hcount[9:2] <= 8'd159) ? hcount[9:2] : 8'b11111111;
+assign line = (vcount[8:6] == 3'b001) ? vcount[5:0] : 6'b111111;
+assign nibble = (hcount[9:2] >= 8'd036 && hcount[9:2] <= 8'd195) ? (hcount[9:2]-8'd036) : 8'b11111111;
 
 assign vram_a = {line[5:0], nibble[7:0]};
 
@@ -70,7 +68,7 @@ assign pixel = (hcount[1]) ?
 	: (hcount[0]) ? vram_do[0] : vram_do[1];
 
 assign rgb = (line == 6'b111111 || nibble == 8'b11111111) ?
-	`WHITE
+	`BLACK
 	: (pixel) ? `BLACK : `WHITE;
 
 //assign rgb = 12'b111100001111;
