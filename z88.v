@@ -3,15 +3,13 @@ module z88 (
   ram_a, ram_di, ram_ce_n, ram_oe_n, ram_we_n,
   rom_a, rom_ce_n, rom_oe_n,
   vram_wp_a, vram_wp_we, vram_wp_di,
-  vram_rp_a,
-  href, vsync, rgb,
+  lcdon,
   frame, t_1s,
 
   // Inputs
-  clk, clk25, reset_n,
+  clk, reset_n,
   ram_do,
   rom_do,
-  vram_rp_do,
   flap,
   kbmatrix
 );
@@ -22,17 +20,14 @@ output          t_1s;   // 1 second blinking LED
 
 // Clocks, Reset switch, Flap switch
 input           clk;
-input           clk25;
 input           reset_n;
 input           flap;  // normally closed =0, open =1
 
+// LCD on/off
+output          lcdon;
+
 // Keyboard matrix
 input   [63:0]  kbmatrix; // 8*8 keys
-
-// VGA
-output          href;
-output          vsync;
-output  [11:0]  rgb;
 
 // Internal RAM (512KB)
 output  [18:0]  ram_a;
@@ -48,12 +43,10 @@ input   [7:0]   rom_do;
 output          rom_ce_n;
 output          rom_oe_n;
 
-// Dual-port VRAM (8KB)
+// Dual-port VRAM write port (8KB)
 output  [13:0]  vram_wp_a;
 output          vram_wp_we;
 output  [3:0]   vram_wp_di;
-output  [13:0]  vram_rp_a;
-input   [3:0]   vram_rp_do;
 
 // Z88 PCB glue
 wire            z88_mck;      // master clock
@@ -96,11 +89,12 @@ wire    [21:0]  z88_va;
 wire            z88_t1s;
 wire            z88_t5ms;
 
+// Clock and Control
 assign z88_reset_n = reset_n;
 assign z88_mck = clk;
-assign t_1s = z88_t1s;
 assign z88_kbmat = kbmatrix;
-// assign z88_nmi_n   /!\ Flap open, Power failure or Card insertion
+assign lcdon = z88_lcdon;
+assign t_1s = z88_t1s;
 
 // Internal RAM (Slot 0)
 assign ram_a = z88_ma[18:0];
@@ -141,7 +135,6 @@ tv80s z80 (
   .di(z80_cdi),
   .cen(z88_pm1)
 );
-
 
 // Blink instance
 blink theblink (
@@ -203,19 +196,5 @@ screen thescreen (
   .t_5ms(z88_t5ms),
   .o_frame(frame)
 );
-
-
-// VGA output
-vga thevga (
-  .clk25(clk25),            // /!\ 25.175MHz clock
-  .reset_n(z88_rout_n),
-//  .reset_n(reset_n),
-  .lcdon(z88_lcdon),
-  .vram_a(vram_rp_a),
-  .vram_do(vram_rp_do),
-  .o_href(href),
-  .o_vsync(vsync),
-  .rgb(rgb)
-  );
 
 endmodule

@@ -62,6 +62,7 @@ wire           ps2dat;
 wire [7:0]     ps2key;
 
 // VGA
+wire          lcdon;
 wire          clk25;
 wire          href;
 wire          vsync;
@@ -81,7 +82,7 @@ wire  [7:0]   rom_do;
 wire          rom_ce_n;
 wire          rom_oe_n;
 
-// Dual-port VRAM
+// Dual-port VRAM (write port for blink, read port for VGA)
 wire  [13:0]  vram_wp_a;
 wire          vram_wp_we;
 wire  [3:0]   vram_wp_di;
@@ -163,14 +164,10 @@ z88 z88de1 (
   .vram_wp_a(vram_wp_a),
   .vram_wp_we(vram_wp_we),
   .vram_wp_di(vram_wp_di),
-  .vram_rp_a(vram_rp_a),
-
+  .lcdon(lcdon),
+  
   .kbmatrix(kbmatrix),
 
-  .clk25(clk25),
-  .href(href),
-  .vsync(vsync),
-  .rgb(rgb),
   .frame(),
   .t_1s(t_1s),
 
@@ -178,9 +175,20 @@ z88 z88de1 (
   .reset_n(reset_n),
   .ram_do(ram_do),
   .rom_do(rom_do),
-  .vram_rp_do(vram_rp_do),
   .flap(flap)
 );
+
+// VGA controller
+vga thevga (
+  .clk25(clk25),            // 25.175MHz clock
+  .reset_n(reset_n),
+  .lcdon(lcdon),
+  .vram_a(vram_rp_a),
+  .vram_do(vram_rp_do),
+  .o_href(href),
+  .o_vsync(vsync),
+  .rgb(rgb)
+  );
 
 // PS2 controller
 ps2 theps2 (
