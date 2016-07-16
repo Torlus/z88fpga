@@ -319,7 +319,7 @@ slatch3 tsta2 (
 // RTC: Tick counter and interrupts
 always @(posedge mck)
 begin
-  if ((!rin_n & flp) | com[4]) begin
+  if ((!rin_n & flp) | com[4]) begin         // /!\ && || ?
     // Timer is reset on hard reset or when RESTIM
     tck <= 16'd0;
     tim0 <= 8'd0;
@@ -467,7 +467,7 @@ assign flp_int = (flps) ? 1'b1 : 1'b0; // Flap open fires an interrupt
 
 // Interrupt signal
 wire intb;
-assign intb_n = !intb;
+assign intb_n = !intb;        // /!\ ~intb; ???
 wire intbw;
 assign intbw = (rtc_int & int1[0] & int1[1])
   | (kbd_int & int1[0] & int1[2]) | (flp_int & int1[0] & int1[5]);

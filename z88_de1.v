@@ -64,7 +64,7 @@ wire [7:0]     ps2key;
 // VGA
 wire          lcdon;
 wire          clk25;
-wire          href;
+wire          hsync;
 wire          vsync;
 wire  [11:0]  rgb;
 
@@ -106,7 +106,7 @@ assign  ps2dat = PS2_DAT;
 assign  PS2_CLK = (!reset_n) ? 1'b0 : 1'bZ;
 assign  PS2_DAT = (!reset_n) ? 1'b0 : 1'bZ;
 
-assign  VGA_HS = href;
+assign  VGA_HS = hsync;
 assign  VGA_VS = vsync;
 assign  VGA_R = rgb[3:0];
 assign  VGA_G = rgb[7:4];
@@ -165,7 +165,7 @@ z88 z88de1 (
   .vram_wp_we(vram_wp_we),
   .vram_wp_di(vram_wp_di),
   .lcdon(lcdon),
-  
+
   .kbmatrix(kbmatrix),
 
   .frame(),
@@ -180,13 +180,13 @@ z88 z88de1 (
 
 // VGA controller
 vga thevga (
-  .clk25(clk25),            // 25.175MHz clock
+  .vclk(clk25),            // 25.175MHz clock
   .reset_n(reset_n),
   .lcdon(lcdon),
   .vram_a(vram_rp_a),
   .vram_do(vram_rp_do),
-  .o_href(href),
-  .o_vsync(vsync),
+  .hsync(hsync),
+  .vsync(vsync),
   .rgb(rgb)
   );
 
