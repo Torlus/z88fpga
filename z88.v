@@ -6,6 +6,9 @@ module z88 (
   lcdon,
   frame, t_1s,
 
+  // Debug
+  kbdval,
+
   // Inputs
   clk, reset_n,
   ram_do,
@@ -17,6 +20,7 @@ module z88 (
 // Debug output
 output          frame;  // BMP generator
 output          t_1s;   // 1 second blinking LED
+output  [7:0]   kbdval;
 
 // Clocks, Reset switch, Flap switch
 input           clk;
@@ -95,6 +99,7 @@ assign z88_mck = clk;
 assign z88_kbmat = kbmatrix;
 assign lcdon = z88_lcdon;
 assign t_1s = z88_t1s;
+assign z88_flap = flap;
 
 // Internal RAM (Slot 0)
 assign ram_a = z88_ma[18:0];
@@ -173,7 +178,8 @@ blink theblink (
   .sbrw(z88_sbr),
   .clkcnt(z88_clkcnt),
   .t_1s(z88_t1s),
-  .t_5ms(z88_t5ms)
+  .t_5ms(z88_t5ms),
+  .kbdval(kbdval)   // Debug
 );
 
 // Screen instance
@@ -196,5 +202,7 @@ screen thescreen (
   .t_5ms(z88_t5ms),
   .o_frame(frame)
 );
+
+
 
 endmodule

@@ -60,6 +60,8 @@ wire [63:0]    kbmatrix;
 wire           ps2clk;
 wire           ps2dat;
 wire [7:0]     ps2key;
+wire [7:0]     kbdval; // Debug
+
 
 // VGA
 wire          lcdon;
@@ -90,11 +92,11 @@ wire  [13:0]  vram_rp_a;
 wire   [3:0]  vram_rp_do;
 
 
-assign  reset_n = SW[0];
+assign  reset_n = ~SW[0];
 assign  flap = SW[1];
 
-assign  HEX0 = 7'h7F;
-assign  HEX1 = 7'h7F;
+//assign  HEX0 = 7'h7F;
+//assign  HEX1 = 7'h7F;
 assign  HEX2 = 7'h7F;
 assign  HEX3 = 7'h7F;
 
@@ -175,7 +177,9 @@ z88 z88de1 (
   .reset_n(reset_n),
   .ram_do(ram_do),
   .rom_do(rom_do),
-  .flap(flap)
+  .flap(flap),
+
+  .kbdval(kbdval)   // Debug
 );
 
 // VGA controller
@@ -197,6 +201,17 @@ ps2 theps2 (
   .ps2dat(ps2dat),
   .clk(clk),
   .kbmat_out(kbmatrix)
+);
+
+// Debug kbd
+Hexadecimal_To_Seven_Segment Seg0 (
+  .hex_number (kbdval[3:0]),
+  .seven_seg_display (HEX0)
+);
+
+Hexadecimal_To_Seven_Segment Seg1 (
+  .hex_number (kbdval[7:4]),
+  .seven_seg_display	(HEX1)
 );
 
 endmodule

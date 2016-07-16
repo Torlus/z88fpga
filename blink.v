@@ -4,9 +4,14 @@ module blink (
   intb_n, nmib_n, roe_n,
   lcdon, pb0w, pb1w, pb2w, pb3w, sbrw, clkcnt,
   t_1s, t_5ms,
+  //Debug
+  kbdval,
   // Inputs
   ca, va, crd_n, cdi, mck, sck, rin_n, flp, hlt_n, mrq_n, ior_n, cm1_n, kbmat
 );
+
+// Debug
+output  [7:0]   kbdval;
 
 // Clocks
 input           mck;      // 9.83MHz Master Clock
@@ -89,7 +94,6 @@ output  [10:0]  sbrw;
 assign se1_n = 1'b1;
 assign se2_n = 1'b1;
 assign se3_n = 1'b1;
-
 
 // Reset
 assign rout_n = rin_n;
@@ -229,6 +233,11 @@ assign kbcol[7] = !ca[15] ? kbmat[63:56] : 8'b00000000;
 assign kbd = ~kbcol[0] & ~kbcol[1] & ~kbcol[2] & ~kbcol[3]
   & ~kbcol[4] & ~kbcol[5] & ~kbcol[6] & ~kbcol[7];
 
+// Debug
+assign kbdval = ~kbmat[7:0] & ~kbmat[15:8] & ~kbmat[23:16] & ~kbmat[31:24]
+   & ~kbmat[39:32] & ~kbmat[47:40] & ~kbmat[55:48] & ~kbmat[63:56];
+
+
 // Shortcuts
 wire reg_rd;
 wire reg_wr;
@@ -319,7 +328,7 @@ slatch3 tsta2 (
 // RTC: Tick counter and interrupts
 always @(posedge mck)
 begin
-  if ((!rin_n & flp) | com[4]) begin         // /!\ && || ?
+  if ((!rin_n & flp) || com[4]) begin         // /!\ && || ?
     // Timer is reset on hard reset or when RESTIM
     tck <= 16'd0;
     tim0 <= 8'd0;
@@ -467,7 +476,7 @@ assign flp_int = (flps) ? 1'b1 : 1'b0; // Flap open fires an interrupt
 
 // Interrupt signal
 wire intb;
-assign intb_n = !intb;        // /!\ ~intb; ???
+assign intb_n = ~intb;        // /!\ ~intb; ???
 wire intbw;
 assign intbw = (rtc_int & int1[0] & int1[1])
   | (kbd_int & int1[0] & int1[2]) | (flp_int & int1[0] & int1[5]);
