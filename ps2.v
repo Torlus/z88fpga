@@ -1,72 +1,89 @@
 module ps2(
   // Inputs
-  reset_n, ps2clk, ps2dat,
+  clk, reset_n, ps2clk, ps2dat,
 
   // Outputs
-  kbmat_out, ps2key
+  kbmat_out
 );
+// -----------------------------------------------------------------------------
+// PS2
+// -----------------------------------------------------------------------------
+//
+// Ext code : E0
+// Rls code : F0
+//
+// Make  :  XX     or   E0, XX
+// Break :  F0,XX  or   E0, F0, XX
+//
 
-input           reset_n;
-input           ps2clk;
-input           ps2dat;
-
+input clk;
+input reset_n;
+input ps2clk;
+input ps2dat;
 output  [63:0]  kbmat_out;
-output  [7:0]   ps2key;
 
-// ps2 conversion
-reg     [7:0]   ps2key;     // scan code
-reg             extkey;     // extended set flag (hE0)
-reg             rlskey;     // release key flag (hF0)
-reg             ps2ok;      // ps2 frame processed
-reg     [3:0]   ps2bit;     // ps2 frame bit counter (0...10)
+wire  reset_n;
+wire  clk;
+wire  ps2clk;
+wire  ps2dat;
 
-// z88 matrix of 64 keys A8(D0:D7), A9(D0:D7), ... A15(D0:D7)
-reg     [63:0]  kbmat;      // shifted to kbd port according A8-A15
+//assign PS2_CLK = (!reset_n) ? 1'b0 : 1'bZ;
+//assign PS2_DAT = (!reset_n) ? 1'b0 : 1'bZ;
+//assign ps2clk = PS2_CLK;
+//assign ps2dat = PS2_DAT;
 
-assign kbmat_out = kbmat;
+reg     [1:0]   ps2clkbuf;
+reg     [10:0]  ps2bits;
+reg     [7:0]   ps2key0;
+reg     [7:0]   ps2key1;
+reg     [7:0]   ps2key2;
+reg     [7:0]   lastkey;
+reg             ps2ok;
+reg     [3:0]   ps2cnt;
 
-always @(posedge ps2clk)
+always @(posedge clk)
 begin
-  if (reset_n == 1'b0) begin
+  if (!reset_n) begin
+    ps2clkbuf <= 2'b0;
+    ps2cnt <= 4'd00;
     ps2ok <= 1'b0;
-    ps2bit <= 4'b0;
-    ps2key <= 8'b0;
-    extkey <= 1'b0;
-    rlskey <= 1'b0;
+    ps2bits <= 10'd00;
   end else begin
-    case(ps2bit[3:0])
-      4'h00: ps2ok <= 1'b0; // start bit
-      4'h01: ps2key[0] <= ps2dat;
-      4'h02: ps2key[1] <= ps2dat;
-      4'h03: ps2key[2] <= ps2dat;
-      4'h04: ps2key[3] <= ps2dat;
-      4'h05: ps2key[4] <= ps2dat;
-      4'h06: ps2key[5] <= ps2dat;
-      4'h07: ps2key[6] <= ps2dat;
-      4'h08: ps2key[7] <= ps2dat;
-      4'h09: begin
-        case (ps2key[7:0])
-          8'hE0: extkey <= 1'b1;
-          8'hF0: rlskey <= 1'b1;
-          default: ps2ok <= 1'b1;  // refresh kbmat
-        endcase
+    ps2clkbuf[1:0] <= {ps2clkbuf[0], ps2clk};   // shift left
+    if(ps2clkbuf == 2'b01) begin    // on positive edge
+      ps2cnt <= ps2cnt + 4'd01;
+      if(ps2cnt == 4'd10) begin
+        ps2cnt <= 4'd00;
+        ps2key0[7] <= ps2bits[0];
+        ps2key0[6] <= ps2bits[1];
+        ps2key0[5] <= ps2bits[2];
+        ps2key0[4] <= ps2bits[3];
+        ps2key0[3] <= ps2bits[4];
+        ps2key0[2] <= ps2bits[5];
+        ps2key0[1] <= ps2bits[6];
+        ps2key0[0] <= ps2bits[7];
+        ps2key1 <= ps2key0;
+        ps2key2 <= ps2key1;
+        ps2ok <= 1'b1;
+      end else begin
+        ps2ok <= 1'b0;
       end
-      default: ps2ok <= 1'b0; // stop bit
-    endcase
-
-    if (ps2bit == 4'h0A) begin
-      ps2bit <= 4'h00;
-    end else begin
-      ps2bit <= ps2bit + 4'h01;
+      ps2bits <= {ps2bits[9:0], ps2dat};	// data shift left
     end
-
   end
 end
 
-always @(posedge ps2clk)
+assign extkey = (ps2key1 == 8'hE0 || ps2key2 == 8'hE0) ? 1'b1 : 1'b0;
+assign rlskey = (ps2key1 == 8'hF0) ? 1'b1 : 1'b0;
+
+// z88 matrix of 64 keys A8(D0:D7), A9(D0:D7), ... A15(D0:D7)
+reg     [63:0]  kbmat;      // shifted to kbd port according A8-A15
+assign kbmat_out = kbmat;
+
+always @(posedge clk)
 begin
-if (ps2ok && reset_n) begin
-  case(ps2key[7:0])
+  if (ps2ok) begin
+  case(ps2key0[7:0])
     //  A8 column
     8'h3E: kbmat[0]  <= ~extkey & ~rlskey;   // 8
     8'h3D: kbmat[1]  <= ~extkey & ~rlskey;   // 7
@@ -139,9 +156,9 @@ if (ps2ok && reset_n) begin
     8'h76: kbmat[61] <= ~extkey & ~rlskey;  // Esc
     8'h11: kbmat[62] <=           ~rlskey;  // [] (Alt)
     8'h59: kbmat[63] <= ~extkey & ~rlskey;  // RShift
-    default: kbmat[63-0] <= 64'b0;
+    default:;
   endcase
-end
+  end
 end
 
 endmodule

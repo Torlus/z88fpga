@@ -195,8 +195,8 @@ ps2 theps2 (
   .reset_n(reset_n),
   .ps2clk(ps2clk),
   .ps2dat(ps2dat),
-  .kbmat_out(kbmatrix),
-  .ps2key(ps2key)
+  .clk(clk),
+  .kbmat_out(kbmatrix)
 );
 
 endmodule
