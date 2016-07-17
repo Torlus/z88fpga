@@ -163,9 +163,8 @@ assign  sbrw = sbr;
 
 // Interrupts
 reg     [6:0]   int1; // Interrupt control (WR)
-wire            int7;
-// reg     [7:0]   sta;  // Interrupt status (RD)
-wire    [7:0]   sta;
+wire            int7; // int1[7] = KWAIT (WR)
+wire    [7:0]   sta;  // Interrupt status (RD)
 
 
 // Timer interrupts
@@ -246,8 +245,8 @@ assign reg_wr = !ior_n & crd_n & zac;
 
 integer i;
 
-// NMI low only on power failure or card insertion (not implemented)
-assign nmib_n = 1'b1;
+// NMI low on flap open, power failure or card insertion (not implemented)
+assign nmib_n = ~flp;
 
 // LCD Registers
 always @(posedge mck)
