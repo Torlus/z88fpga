@@ -82,8 +82,11 @@ assign kbmat_out = kbmat;
 
 always @(posedge clk)
 begin
-  if (ps2ok) begin
-  case(ps2key0[7:0])
+  if (!reset_n) begin
+    kbmat <= 64'b0;
+  end else begin
+    if (ps2ok) begin
+    case(ps2key0[7:0])
     //  A8 column
     8'h3E: kbmat[0]  <= ~extkey & ~rlskey;   // 8
     8'h3D: kbmat[1]  <= ~extkey & ~rlskey;   // 7
@@ -157,7 +160,8 @@ begin
     8'h11: kbmat[62] <=           ~rlskey;  // [] (Alt)
     8'h59: kbmat[63] <= ~extkey & ~rlskey;  // RShift
     default:;
-  endcase
+    endcase
+    end
   end
 end
 

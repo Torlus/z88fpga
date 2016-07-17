@@ -383,20 +383,6 @@ begin
   end
 end
 
-// INT7 (KWAIT) as a RS latch
-reg             int7_val_req;
-wire            int7_val_ack;
-reg             int7_clr_req;
-wire            int7_clr_ack;
-
-slatch3 int7l (
-  .clk(mck), .res_n(rin_n), .di(1'b0), .q(int7),
-  .req0(int7_val_req), .d0(cdi[7]),
-  .req1(int7_clr_req), .d1(1'b0),
-  .req2(1'b0), .d2(1'b0),
-  .ack0(int7_val_ack), .ack1(int7_clr_ack), .ack2()
-);
-
 // Register reads (r_cdo control)
 always @(posedge mck)
 begin
@@ -439,22 +425,6 @@ begin
   end
 end
 
-// PM1S as a RS latch
-reg             pm1s_set_req;
-wire            pm1s_set_ack;
-reg             pm1s_clr_req;
-wire            pm1s_clr_ack;
-reg             pm1s_clr_req2;
-wire            pm1s_clr_ack2;
-
-slatch3 pm1sl (
-  .clk(mck), .res_n(rin_n), .di(1'b1), .q(pm1s),
-  .req0(pm1s_set_req), .d0(1'b1),
-  .req1(pm1s_clr_req), .d1(1'b0),
-  .req2(pm1s_clr_req2), .d2(1'b0),
-  .ack0(pm1s_set_ack), .ack1(pm1s_clr_ack), .ack2(pm1s_clr_ack2)
-);
-
 assign sta = {flp, 1'b0, flp_int, 2'b00, kbd_int, 1'b0, rtc_int};
 
 // Keyboard Status
@@ -480,21 +450,7 @@ wire intbw;
 assign intbw = (rtc_int & int1[0] & int1[1])
   | (kbd_int & int1[0] & int1[2]) | (flp_int & int1[0] & int1[5]);
 
-// Intb as a RS latch
-reg             intb_set_req;
-wire            intb_set_ack;
-reg             intb_clr_req;
-wire            intb_clr_ack;
-
-slatch3 intbl (
-  .clk(mck), .res_n(rin_n), .di(1'b0), .q(intb),
-  .req0(intb_set_req), .d0(1'b1),
-  .req1(intb_clr_req), .d1(1'b0),
-  .req2(1'b0), .d2(1'b0),
-  .ack0(intb_set_ack), .ack1(intb_clr_ack), .ack2()
-);
-
-// Do Interrupt
+// Maskable Interrupt
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -514,6 +470,7 @@ begin
   end
 end
 
+// Snooze and Coma
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -524,7 +481,7 @@ begin
     pm1s_clr_req <= 1'b0;
     if (!hlt_n & !intb) begin
       pm1s_clr_req <= 1'b1;   // Do Snooze
-      // Halt and A15-8=3F does Coma : switch off mck and use sck (TBD)
+      // Halt and A15-8=3F does Coma : switch off mck and use sck
       // (Note : Register I is copied on A15-8 during Halt)
     end
     if (intb) begin
@@ -542,18 +499,18 @@ begin
     int1 <= 7'h00;
     kbds_clr_req <= 1'b0;
     flap_clr_req <= 1'b0;
-    int7_val_req <= 1'b0;
+    int7_set_req <= 1'b0;
   end else begin
     kbds_clr_req <= 1'b0;
     flap_clr_req <= 1'b0;
-    int7_val_req <= 1'b0;
+    int7_set_req <= 1'b0;
     if (reg_wr) begin
       // IO register write
       case(ca[7:0])
         8'hB0: com <= cdi;
         8'hB1: begin
           int1 <= cdi[6:0];
-          int7_val_req <= 1'b1;
+          int7_set_req <= cdi[7];
         end
         8'hB6: begin
           // ACK main interrupt acknowledge
@@ -570,7 +527,69 @@ begin
   end
 end
 
-// Keyboard Status as a RS latch
+// Keyboard and Flap Status change
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    kbds_set_req <= 1'b0;
+    flap_set_req <= 1'b0;
+  end else begin
+    kbds_set_req <= 1'b0;
+    flap_set_req <= 1'b0;
+    if (kbd != 8'hFF) begin
+      kbds_set_req <= 1'b1;
+    end
+    if (flp) begin
+      flap_set_req <= 1'b1;
+    end
+  end
+end
+
+// Z80 Clock Status (pm1s) as a RS latch
+reg             pm1s_set_req;
+wire            pm1s_set_ack;
+reg             pm1s_clr_req;
+wire            pm1s_clr_ack;
+reg             pm1s_clr_req2;
+wire            pm1s_clr_ack2;
+
+slatch3 pm1sl (
+  .clk(mck), .res_n(rin_n), .di(1'b1), .q(pm1s),
+  .req0(pm1s_set_req), .d0(1'b1),
+  .req1(pm1s_clr_req), .d1(1'b0),
+  .req2(pm1s_clr_req2), .d2(1'b0),
+  .ack0(pm1s_set_ack), .ack1(pm1s_clr_ack), .ack2(pm1s_clr_ack2)
+);
+
+// Maskable Interrupt Status (intb) as a RS latch
+reg             intb_set_req;
+wire            intb_set_ack;
+reg             intb_clr_req;
+wire            intb_clr_ack;
+
+slatch3 intbl (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(intb),
+  .req0(intb_set_req), .d0(1'b1),
+  .req1(intb_clr_req), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(intb_set_ack), .ack1(intb_clr_ack), .ack2()
+);
+
+// INT[7] (KWAIT) as a RS latch
+reg             int7_set_req;
+wire            int7_set_ack;
+reg             int7_clr_req;
+wire            int7_clr_ack;
+
+slatch3 int7l (
+  .clk(mck), .res_n(rin_n), .di(1'b0), .q(int7),
+  .req0(int7_set_req), .d0(1'b1),
+  .req1(int7_clr_req), .d1(1'b0),
+  .req2(1'b0), .d2(1'b0),
+  .ack0(int7_set_ack), .ack1(int7_clr_ack), .ack2()
+);
+
+// Keyboard Interrupt Status (kbds) as a RS latch
 reg             kbds_set_req;
 wire            kbds_set_ack;
 reg             kbds_clr_req;
@@ -584,27 +603,7 @@ slatch3 kbdsl (
   .ack0(kbds_set_ack), .ack1(kbds_clr_ack), .ack2()
 );
 
-
-// Keyboard and Flap Status change
-// TODO (?) Debounce
-always @(posedge mck)
-begin
-  if (!rin_n) begin
-    kbds_set_req <= 1'b0;
-    flap_set_req <= 1'b0;
-  end else begin
-    kbds_set_req <= 1'b0;
-    flap_set_req <= 1'b0;
-    if (kbd != 8'hFF & !ior_n) begin
-      kbds_set_req <= 1'b1;
-    end
-    if (flp) begin
-      flap_set_req <= 1'b1;
-    end
-  end
-end
-
-// Flap as a RS latch
+// Flap Interrupt Status (flps) as a RS latch
 reg             flap_set_req;
 wire            flap_set_ack;
 reg             flap_clr_req;
