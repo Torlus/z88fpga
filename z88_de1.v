@@ -61,7 +61,9 @@ wire           ps2clk;
 wire           ps2dat;
 wire [7:0]     ps2key;
 wire [7:0]     kbdval; // Debug
-
+wire           pm1s;   // Debug
+wire           kbds;   // Debug
+wire           ints;   // Debug
 
 // VGA
 wire          lcdon;
@@ -101,7 +103,7 @@ assign  HEX2 = 7'h7F;
 assign  HEX3 = 7'h7F;
 
 assign  LEDR = SW[9:0];
-assign  LEDG = {t_1s, 5'd0, flap, reset_n};
+assign  LEDG = {t_1s, pm1s, kbds, ints, 2'b0, flap, reset_n};
 
 assign  ps2clk = PS2_CLK;
 assign  ps2dat = PS2_DAT;
@@ -179,7 +181,10 @@ z88 z88de1 (
   .rom_do(rom_do),
   .flap(flap),
 
-  .kbdval(kbdval)   // Debug
+  .kbdval(kbdval),   // Debug
+  .pm1s(pm1s),       // Debug
+  .kbds(kbds),       // Debug
+  .ints(ints)        // Debug
 );
 
 // VGA controller

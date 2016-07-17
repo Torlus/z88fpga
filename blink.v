@@ -3,7 +3,7 @@ module blink (
   rout_n, z80_cdo, vid_cdo, wrb_n, ipce_n, irce_n, se1_n, se2_n, se3_n, ma, pm1,
   intb_n, nmib_n, roe_n,
   lcdon, pb0w, pb1w, pb2w, pb3w, sbrw, clkcnt,
-  t_1s, t_5ms,
+  t_1s, t_5ms, pm1s, kbds,
   //Debug
   kbdval,
   // Inputs
@@ -12,6 +12,8 @@ module blink (
 
 // Debug
 output  [7:0]   kbdval;
+output          pm1s;
+output          kbds;
 
 // Clocks
 input           mck;      // 9.83MHz Master Clock
@@ -444,9 +446,9 @@ wire flp_int;
 assign flp_int = (flps) ? 1'b1 : 1'b0; // Flap open fires an interrupt
 
 // Interrupt signal
-wire intb;
-assign intb_n = ~intb;        // /!\ ~intb; ???
-wire intbw;
+wire intb;                    // latch
+assign intb_n = ~intb;        // to Z80
+wire intbw;                   // RTC int + KBD int + FLAP int
 assign intbw = (rtc_int & int1[0] & int1[1])
   | (kbd_int & int1[0] & int1[2]) | (flp_int & int1[0] & int1[5]);
 
@@ -463,6 +465,7 @@ begin
       // Fires an interrupt if RTC, KBD or FLP request
       intb_set_req <= 1'b1;
     end
+    // if (!sta[5:0]) begin
     if (!ior_n & !cm1_n) begin
       // Z80 has entered INT and acknowledged it
       intb_clr_req <= 1'b1;
@@ -479,7 +482,7 @@ begin
   end else begin
     pm1s_set_req <= 1'b0;
     pm1s_clr_req <= 1'b0;
-    if (!hlt_n & !intb) begin
+    if (!hlt_n) begin
       pm1s_clr_req <= 1'b1;   // Do Snooze
       // Halt and A15-8=3F does Coma : switch off mck and use sck
       // (Note : Register I is copied on A15-8 during Halt)
@@ -489,7 +492,6 @@ begin
     end
   end
 end
-
 
 // Register Writes
 always @(posedge mck)

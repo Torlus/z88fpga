@@ -8,6 +8,9 @@ module z88 (
 
   // Debug
   kbdval,
+  pm1s,
+  kbds,
+  ints,
 
   // Inputs
   clk, reset_n,
@@ -21,6 +24,10 @@ module z88 (
 output          frame;  // BMP generator
 output          t_1s;   // 1 second blinking LED
 output  [7:0]   kbdval;
+output          pm1s;
+output          kbds;
+output          ints;
+assign ints = ~z88_int_n;
 
 // Clocks, Reset switch, Flap switch
 input           clk;
@@ -179,7 +186,9 @@ blink theblink (
   .clkcnt(z88_clkcnt),
   .t_1s(z88_t1s),
   .t_5ms(z88_t5ms),
-  .kbdval(kbdval)   // Debug
+  .kbdval(kbdval),  // Debug
+  .pm1s(pm1s),      // Debug
+  .kbds(kbds)       // Debug
 );
 
 // Screen instance
