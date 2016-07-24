@@ -250,9 +250,6 @@ assign reg_wr = !ior_n & crd_n & zac;
 
 integer i;
 
-// NMI low on flap open, power failure or card insertion (not implemented)
-assign nmib_n = ~flps;
-
 // LCD Registers Write
 always @(posedge mck)
 begin
@@ -362,7 +359,7 @@ end
 
 // Lines for Screen effects : grey and flash
 assign t_1s = tim0[7];
-assign t_5ms = tim0[1];
+assign t_5ms = tim0[2];
 
 // RTC registers writes
 always @(posedge mck)
@@ -406,8 +403,8 @@ begin
         8'hB2: begin
           r_cdo <= kbd;
           if (int7) begin
-            int7_clr_req <= 1'b1;    // clear Kwait
-            pm1s_clr_req2 <= 1'b1;   // Snooze
+            //int7_clr_req <= 1'b1;    // clear Kwait
+            //pm1s_clr_req2 <= 1'b1;   // Snooze
           end
         end
         // TSTA : Timer status
@@ -434,13 +431,15 @@ assign sta = {flp, 1'b0, flps, 2'b00, kbds, 1'b0, rtcs};
 
 // Interrupt
 wire intw;  // RTC int + KBD int + FLAP int
-wire kbds;  // key pressed
+wire kbds;  // key pressed (only during snooze or coma)
 wire flps;  // flap open
 wire rtcs;  // RTC (tick, sec, min)
 assign rtcs = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
-assign intb_n = ~intw;        // to Z80
 assign intw = (rtcs & int1[0] & int1[1])
-  | (kbds & int1[0] & int1[2]) | (flps & int1[0] & int1[5]);
+   | (flps & int1[0] & int1[5]);
+assign intb_n = ~intw;        // to Z80
+// NMI low on flap open, power failure or card insertion (not implemented)
+assign nmib_n = ~flp;
 
 // Wake up from snooze state
 always @(posedge mck)
@@ -448,7 +447,7 @@ begin
   if (!rin_n) begin
     pm1s_set_req <= 1'b0;
   end else begin
-    pm1s_set_req <= (intw || key); // Any INT or key pressed wake up clock
+    pm1s_set_req <= intw; // Any INT or key pressed wake up clock
   end
 end
 
@@ -458,7 +457,7 @@ begin
   if (!rin_n) begin
     pm1s_clr_req <= 1'b0;
   end else begin
-    pm1s_clr_req <= ~hlt_n;   // Stop Z80 clock on HALT
+    pm1s_clr_req <= 1'b0; //~hlt_n;   // Stop Z80 clock on HALT
     // Halt and A15-8=3F does Coma : switch off mck and use sck
     // (Note : Register I is copied on A15-8 during Halt)
   end
@@ -500,13 +499,13 @@ begin
   end
 end
 
-// Keyboard Latch change
+// Keyboard interrupt latch change
 always @(posedge mck)
 begin
   if (!rin_n) begin
     kbds_set_req <= 1'b0;
   end else begin
-    kbds_set_req <= key;
+    kbds_set_req <= (key & ~pm1s); // wake up
   end
 end
 

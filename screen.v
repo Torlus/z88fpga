@@ -42,7 +42,6 @@ output  [3:0]   o_vram_do;
 output          o_vram_we;
 
 // Internal screen registers
-reg     [5:0]   slin; // screen line (64)
 reg     [6:0]   scol; // screen column (108)
                       // Screen Base Attribute from the Screen Base File
 reg             hrs;  // hires (8 pixels wide char else 6)
@@ -75,9 +74,11 @@ assign o_frame = frame;
 assign va = r_va;
 
 // Shortcuts
+wire    [5:0]   slin; // screen line (64)
 wire            cursor; // lores cursor header
 wire            nullch; // do not increment nibble counter
 
+assign slin = vram_a[13:8];
 assign cursor = hrs & rev & fls;
 assign nullch = hrs & rev & !fls & gry;
 
@@ -86,7 +87,6 @@ always @(posedge mck)
 begin
   if (!rin_n | !lcdon) begin
     sbar <= 1'b0;
-    slin <= 6'd0;
     scol <= 7'd0;
     pix6f <= 1'b0;
     pix6e <= 1'b0;
@@ -212,11 +212,9 @@ begin
         pix4f <= 1'b0;
         pix6f <= 1'b0;
         if (slin == 6'd63) begin
-          slin <= 6'd0;
           vram_a[13:8] <= 6'd0;
           frame <= 1'b1; // frame flag for BMP output
         end else begin
-          slin <= slin + 1'b1;
           vram_a[13:8] <= vram_a[13:8] + 1'b1;
         end
       end else begin
