@@ -430,51 +430,17 @@ begin
   end
 end
 
-assign sta = {flp, 1'b0, flp_int, 2'b00, kbd_int, 1'b0, rtc_int};
+assign sta = {flp, 1'b0, flps, 2'b00, kbds, 1'b0, rtcs};
 
-// Keyboard Status
-wire            kbds;
-
-// Flap Status;
-wire            flps;
-
-// Interrupts
-wire rtc_int;
-assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
-
-wire kbd_int;
-assign kbd_int = kbds; // Any key pressed
-
-wire flp_int;
-assign flp_int = flps; // Flap open
-
-// Interrupt signal
-wire intb;                    // latch
-assign intb_n = ~intb;        // to Z80
-wire intbw;                   // RTC int + KBD int + FLAP int
-assign intbw = (rtc_int & int1[0] & int1[1])
-  | (kbd_int & int1[0] & int1[2]) | (flp_int & int1[0] & int1[5]);
-
-// Maskable Interrupt
-always @(posedge mck)
-begin
-  if (!rin_n) begin
-    intb_set_req <= 1'b0;
-    intb_clr_req <= 1'b0;
-  end else begin
-    intb_set_req <= 1'b0;
-    intb_clr_req <= 1'b0;
-    if (intbw) begin
-      // Fires an interrupt if RTC, KBD or FLP request
-      intb_set_req <= 1'b1;
-    end
-    // if (!sta[5:0]) begin
-    if (!ior_n & !cm1_n) begin
-      // Z80 has entered INT and acknowledged it
-      intb_clr_req <= 1'b1;
-    end
-  end
-end
+// Interrupt
+wire intw;  // RTC int + KBD int + FLAP int
+wire kbds;  // key pressed
+wire flps;  // flap open
+wire rtcs;  // RTC (tick, sec, min)
+assign rtcs = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
+assign intb_n = ~intw;        // to Z80
+assign intw = (rtcs & int1[0] & int1[1])
+  | (kbds & int1[0] & int1[2]) | (flps & int1[0] & int1[5]);
 
 // Wake up from snooze state
 always @(posedge mck)
@@ -482,7 +448,7 @@ begin
   if (!rin_n) begin
     pm1s_set_req <= 1'b0;
   end else begin
-    pm1s_set_req <= (intb || key); // Any INT or keypressed
+    pm1s_set_req <= (intw || key); // Any INT or key pressed wake up clock
   end
 end
 
@@ -568,20 +534,6 @@ slatch3 pm1sl (
   .req1(pm1s_clr_req), .d1(1'b0),
   .req2(pm1s_clr_req2), .d2(1'b0),
   .ack0(pm1s_set_ack), .ack1(pm1s_clr_ack), .ack2(pm1s_clr_ack2)
-);
-
-// Maskable Interrupt Status (intb) as a RS latch
-reg             intb_set_req;
-wire            intb_set_ack;
-reg             intb_clr_req;
-wire            intb_clr_ack;
-
-slatch3 intbl (
-  .clk(mck), .res_n(rin_n), .di(1'b0), .q(intb),
-  .req0(intb_set_req), .d0(1'b1),
-  .req1(intb_clr_req), .d1(1'b0),
-  .req2(1'b0), .d2(1'b0),
-  .ack0(intb_set_ack), .ack1(intb_clr_ack), .ack2()
 );
 
 // INT[7] (KWAIT) as a RS latch
