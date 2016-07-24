@@ -11,6 +11,7 @@ module z88 (
   pm1s,
   kbds,
   ints,
+  key,
 
   // Inputs
   clk, reset_n,
@@ -27,7 +28,10 @@ output  [7:0]   kbdval;
 output          pm1s;
 output          kbds;
 output          ints;
+output          key;
+
 assign ints = ~z88_int_n;
+
 
 // Clocks, Reset switch, Flap switch
 input           clk;
@@ -188,7 +192,8 @@ blink theblink (
   .t_5ms(z88_t5ms),
   .kbdval(kbdval),  // Debug
   .pm1s(pm1s),      // Debug
-  .kbds(kbds)       // Debug
+  .kbds(kbds),      // Debug
+  .key(key)         // Debug
 );
 
 // Screen instance

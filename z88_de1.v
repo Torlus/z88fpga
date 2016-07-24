@@ -103,7 +103,7 @@ assign  HEX2 = 7'h7F;
 assign  HEX3 = 7'h7F;
 
 assign  LEDR = SW[9:0];
-assign  LEDG = {t_1s, pm1s, kbds, ints, 2'b0, flap, reset_n};
+assign  LEDG = {t_1s, pm1s, ints, kbds, key, 1'b0, flap, reset_n};
 
 assign  ps2clk = PS2_CLK;
 assign  ps2dat = PS2_DAT;
@@ -117,7 +117,9 @@ assign  VGA_G = rgb[7:4];
 assign  VGA_B = rgb[11:8];
 
 // 4MB Flash to 512KB Flash
-assign  FL_ADDR = { 3'b0, rom_a[18:0] };
+//assign  FL_ADDR = { 3'b0, rom_a[18:0] };
+// 4MB Flash to 128KB Flash
+assign  FL_ADDR = { 3'b0, rom_a[16:0] };
 assign  FL_OE_N = rom_oe_n;
 assign  FL_CE_N = rom_ce_n;
 assign  FL_RST_N = 1'b1;
@@ -150,7 +152,7 @@ vram video (
   .wraddress(vram_wp_a),
   .wrclock(clk),
   .wren(vram_wp_we),
-  .q(vram_rp_do),
+  .q(vram_rp_do)
 );
 
 // Z88 instance
@@ -181,10 +183,12 @@ z88 z88de1 (
   .rom_do(rom_do),
   .flap(flap),
 
-  .kbdval(kbdval),   // Debug
-  .pm1s(pm1s),       // Debug
-  .kbds(kbds),       // Debug
-  .ints(ints)        // Debug
+   // Debug
+  .kbdval(kbdval),
+  .pm1s(pm1s),
+  .kbds(kbds),
+  .ints(ints),
+  .key(key)
 );
 
 // VGA controller

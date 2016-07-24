@@ -26,6 +26,8 @@ wire  reset_n;
 wire  clk;
 wire  ps2clk;
 wire  ps2dat;
+wire  extkey;
+wire  rlskey;
 
 //assign PS2_CLK = (!reset_n) ? 1'b0 : 1'bZ;
 //assign PS2_DAT = (!reset_n) ? 1'b0 : 1'bZ;

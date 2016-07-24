@@ -5,7 +5,7 @@ module blink (
   lcdon, pb0w, pb1w, pb2w, pb3w, sbrw, clkcnt,
   t_1s, t_5ms, pm1s, kbds,
   //Debug
-  kbdval,
+  kbdval, key,
   // Inputs
   ca, va, crd_n, cdi, mck, sck, rin_n, flp, hlt_n, mrq_n, ior_n, cm1_n, kbmat
 );
@@ -14,6 +14,7 @@ module blink (
 output  [7:0]   kbdval;
 output          pm1s;
 output          kbds;
+output          key;
 
 // Clocks
 input           mck;      // 9.83MHz Master Clock
@@ -218,9 +219,9 @@ begin
 end
 
 // Keyboard
-// reg     [63:0]  kbmat;
-wire    [7:0]   kbcol[0:7];
-wire    [7:0]   kbd;
+wire    [7:0]   kbcol[0:7];   // matrix AND ca[8:15]
+wire    [7:0]   kbd;          // register
+wire            key;          // any key pressed
 
 assign kbcol[0] = !ca[ 8] ? kbmat[ 7: 0] : 8'b00000000;
 assign kbcol[1] = !ca[ 9] ? kbmat[15: 8] : 8'b00000000;
@@ -233,6 +234,8 @@ assign kbcol[7] = !ca[15] ? kbmat[63:56] : 8'b00000000;
 
 assign kbd = ~kbcol[0] & ~kbcol[1] & ~kbcol[2] & ~kbcol[3]
   & ~kbcol[4] & ~kbcol[5] & ~kbcol[6] & ~kbcol[7];
+
+assign key = (kbmat[63:0] != 63'b0) ? 1'b1 : 1'b0;
 
 // Debug
 assign kbdval = ~kbmat[7:0] & ~kbmat[15:8] & ~kbmat[23:16] & ~kbmat[31:24]
@@ -248,9 +251,9 @@ assign reg_wr = !ior_n & crd_n & zac;
 integer i;
 
 // NMI low on flap open, power failure or card insertion (not implemented)
-assign nmib_n = ~flp;
+assign nmib_n = ~flps;
 
-// LCD Registers
+// LCD Registers Write
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -273,7 +276,7 @@ begin
   end
 end
 
-// Segment Registers
+// Segment Registers Write
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -326,10 +329,10 @@ slatch3 tsta2 (
   .ack0(tsta_set_ack[2]), .ack1(tsta_clr_ack[2]), .ack2()
 );
 
-// RTC: Tick counter and interrupts
+// RTC counters and interrupts
 always @(posedge mck)
 begin
-  if ((!rin_n & flp) || com[4]) begin         // /!\ && || ?
+  if ((!rin_n & flp) || com[4]) begin
     // Timer is reset on hard reset or when RESTIM
     tck <= 16'd0;
     tim0 <= 8'd0;
@@ -361,7 +364,7 @@ end
 assign t_1s = tim0[7];
 assign t_5ms = tim0[1];
 
-// RTC: IO Registers
+// RTC registers writes
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -385,7 +388,7 @@ begin
   end
 end
 
-// Register reads (r_cdo control)
+// Interrupt registers reads (r_cdo control)
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -440,10 +443,10 @@ wire rtc_int;
 assign rtc_int = ((tsta & tmk) == 3'b000) ? 1'b0 : 1'b1;
 
 wire kbd_int;
-assign kbd_int = (kbds) ? 1'b1 : 1'b0; // Key pressed and Kwait fires an interrupt
+assign kbd_int = kbds; // Any key pressed
 
 wire flp_int;
-assign flp_int = (flps) ? 1'b1 : 1'b0; // Flap open fires an interrupt
+assign flp_int = flps; // Flap open
 
 // Interrupt signal
 wire intb;                    // latch
@@ -473,27 +476,29 @@ begin
   end
 end
 
-// Snooze and Coma
+// Wake up from snooze state
 always @(posedge mck)
 begin
   if (!rin_n) begin
     pm1s_set_req <= 1'b0;
-    pm1s_clr_req <= 1'b0;
   end else begin
-    pm1s_set_req <= 1'b0;
-    pm1s_clr_req <= 1'b0;
-    if (!hlt_n) begin
-      pm1s_clr_req <= 1'b1;   // Do Snooze
-      // Halt and A15-8=3F does Coma : switch off mck and use sck
-      // (Note : Register I is copied on A15-8 during Halt)
-    end
-    if (intb) begin
-      pm1s_set_req <= 1'b1;   // Awake Z80 CPU
-    end
+    pm1s_set_req <= (intb || key); // Any INT or keypressed
   end
 end
 
-// Register Writes
+// Coma state
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    pm1s_clr_req <= 1'b0;
+  end else begin
+    pm1s_clr_req <= ~hlt_n;   // Stop Z80 clock on HALT
+    // Halt and A15-8=3F does Coma : switch off mck and use sck
+    // (Note : Register I is copied on A15-8 during Halt)
+  end
+end
+
+// Interrupt registers writes
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -529,21 +534,23 @@ begin
   end
 end
 
-// Keyboard and Flap Status change
+// Keyboard Latch change
 always @(posedge mck)
 begin
   if (!rin_n) begin
     kbds_set_req <= 1'b0;
+  end else begin
+    kbds_set_req <= key;
+  end
+end
+
+// Flap Latch change
+always @(posedge mck)
+begin
+  if (!rin_n) begin
     flap_set_req <= 1'b0;
   end else begin
-    kbds_set_req <= 1'b0;
-    flap_set_req <= 1'b0;
-    if (kbd != 8'hFF) begin
-      kbds_set_req <= 1'b1;
-    end
-    if (flp) begin
-      flap_set_req <= 1'b1;
-    end
+    flap_set_req <= flp;
   end
 end
 
