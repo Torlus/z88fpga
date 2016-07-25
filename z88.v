@@ -59,9 +59,9 @@ output          rom_ce_n;
 output          rom_oe_n;
 
 // Dual-port VRAM write port (8KB)
-output  [13:0]  vram_wp_a;
 output          vram_wp_we;
-output  [3:0]   vram_wp_di;
+output  [12:0]  vram_wp_a;
+output  [7:0]   vram_wp_di;
 
 // Z88 PCB glue
 wire            z88_mck;      // master clock

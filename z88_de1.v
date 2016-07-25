@@ -60,10 +60,13 @@ wire [63:0]    kbmatrix;
 wire           ps2clk;
 wire           ps2dat;
 wire [7:0]     ps2key;
-wire [7:0]     kbdval; // Debug
-wire           pm1s;   // Debug
-wire           kbds;   // Debug
-wire           ints;   // Debug
+
+// Debug
+wire [7:0]     kbdval;
+wire           pm1s;
+wire           kbds;
+wire           ints;
+wire           key;
 
 // VGA
 wire          lcdon;
@@ -87,11 +90,11 @@ wire          rom_ce_n;
 wire          rom_oe_n;
 
 // Dual-port VRAM (write port for blink, read port for VGA)
-wire  [13:0]  vram_wp_a;
+wire  [12:0]  vram_wp_a;
 wire          vram_wp_we;
-wire  [3:0]   vram_wp_di;
-wire  [13:0]  vram_rp_a;
-wire   [3:0]  vram_rp_do;
+wire  [7:0]   vram_wp_di;
+wire  [15:0]  vram_rp_a;
+wire          vram_rp_do;
 
 
 assign  reset_n = ~SW[0];
@@ -119,7 +122,7 @@ assign  VGA_B = rgb[11:8];
 // 4MB Flash to 512KB Flash
 //assign  FL_ADDR = { 3'b0, rom_a[18:0] };
 // 4MB Flash to 128KB Flash
-assign  FL_ADDR = { 3'b0, rom_a[16:0] };
+assign  FL_ADDR = { 5'b0, rom_a[16:0] };
 assign  FL_OE_N = rom_oe_n;
 assign  FL_CE_N = rom_ce_n;
 assign  FL_RST_N = 1'b1;

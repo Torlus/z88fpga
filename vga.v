@@ -22,16 +22,16 @@ hsync, vsync, rgb
 input								vclk;
 input								reset_n;
 input								lcdon;
-input			[3:0]			vram_do;
+input		      			vram_do;
 
-output		[13:0]		vram_a;
+output		[15:0]		vram_a;
 output							hsync;
 output							vsync;
 output		[11:0]		rgb;
 
-wire			[5:0]			line;        // 64 lines
-wire			[7:0]			nibble;      // 160 nibbles
-wire								pixel;
+wire			[5:0]			line;        // 64 lines of
+wire			[9:0]			pixel;       // 640 pixels
+
 `define BLACK 12'b000000000000
 `define WHITE 12'b111111111111
 
@@ -72,16 +72,12 @@ end
 
 // start display at nibble : (96+40+8)/4=36
 assign line   = (vcount[9:6] == 3'b100) ? vcount[5:0] : 6'b111111;
-assign nibble = (hcount[9:2] >= 8'd036 && hcount[9:2] <= 8'd195) ? (hcount[9:2]-8'd036) : 8'b11111111;
+assign pixel  = (hcount[9:0] >= 10'd144 && hcount[9:0] <= 10'd784) ? (hcount[9:0]-10'd144) : 10'b1111111111;
 
-assign vram_a = {line[5:0], nibble[7:0]};
+assign vram_a = {line[5:0], pixel[9:0]};
 
-assign pixel = (hcount[1]) ?
-	(hcount[0]) ? vram_do[2] : vram_do[3]
-	: (hcount[0]) ? vram_do[0] : vram_do[1];
-
-assign rgb = (line == 6'b111111 || nibble == 8'b11111111) ?
+assign rgb = (line == 6'b111111 || pixel == 10'b1111111111) ?
 	`BLACK
-	: (pixel) ? `BLACK : `WHITE;
+	: (vram_do) ? `BLACK : `WHITE;
 
 endmodule
