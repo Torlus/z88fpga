@@ -338,28 +338,31 @@ begin
     tsta_set_req <= 3'd0;
   end else begin
     tsta_set_req <= 3'd0;
-    tck <= tck + 16'd1;
     if (tck == 16'd49152) begin
       tck <= 16'd0;
       tsta_set_req[0] <= 1'b1;
-      tim0 <= tim0 + 8'd1;
       if (tim0 == 8'd199) begin
         tim0 <= 8'd0;
         tsta_set_req[1] <= 1'b1;
-        tim1 <= tim1 + 6'd1;
         if (tim1 == 6'd59) begin
           tim1 <= 6'd0;
           tsta_set_req[2] <= 1'b1;
           timm <= timm + 21'd1;
+        end else begin
+          tim1 <= tim1 + 6'd1;
         end
+      end else begin
+        tim0 <= tim0 + 8'd1;
       end
+    end else begin
+      tck <= tck + 16'd1;
     end
   end
 end
 
 // Lines for Screen effects : grey and flash
 assign t_1s = tim0[7];
-assign t_5ms = tim0[2];
+assign t_5ms = tim0[0];
 
 // RTC registers writes
 always @(posedge mck)

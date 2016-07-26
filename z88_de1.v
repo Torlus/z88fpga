@@ -90,11 +90,11 @@ wire          rom_ce_n;
 wire          rom_oe_n;
 
 // Dual-port VRAM (write port for blink, read port for VGA)
-wire  [12:0]  vram_wp_a;
 wire          vram_wp_we;
-wire  [7:0]   vram_wp_di;
-wire  [15:0]  vram_rp_a;
-wire          vram_rp_do;
+wire  [13:0]  vram_wp_a;
+wire  [3:0]   vram_wp_di;
+wire  [13:0]  vram_rp_a;
+wire  [3:0]   vram_rp_do;
 
 
 assign  reset_n = ~SW[0];
