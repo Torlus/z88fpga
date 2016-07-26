@@ -362,7 +362,7 @@ end
 
 // Lines for Screen effects : grey and flash
 assign t_1s = tim0[7];
-assign t_5ms = tim0[0];
+assign t_5ms = tck[11];
 
 // RTC registers writes
 always @(posedge mck)
