@@ -364,26 +364,31 @@ end
 assign t_1s = tim0[7];
 assign t_5ms = tck[11];
 
-// RTC registers writes
+// TSTA (wr)
 always @(posedge mck)
 begin
   if (!rin_n) begin
     tsta_clr_req <= 3'd0;
-    tmk <= 3'd0;
   end else begin
     tsta_clr_req <= 3'd0;
-    if (reg_wr) begin // IO Register Write
-      case(ca[7:0])
-        8'hB4: begin
-          for(i = 0; i < 3; i = i + 1) begin
-            if (cdi[i]) begin
-              tsta_clr_req[i] <= 1'b1;
-            end
-          end
+    if (reg_wr && ca[7:0] == 8'hB4) begin
+      for(i = 0; i < 3; i = i + 1) begin
+        if (cdi[i]) begin
+          tsta_clr_req[i] <= 1'b1;
         end
-        8'hB5: tmk <= cdi[2:0];
-        default: ;
-      endcase
+      end
+    end
+  end
+end
+
+// TMK (wr)
+always @(posedge mck)
+begin
+  if (!rin_n) begin
+    tmk <= 3'd0;
+  end else begin
+    if (reg_wr && ca[7:0] == 8'hB5) begin
+      tmk <= cdi[2:0];
     end
   end
 end
@@ -466,7 +471,7 @@ begin
   end
 end
 
-// Interrupt registers writes
+// COM, INT, ACK (wr)
 always @(posedge mck)
 begin
   if (!rin_n) begin
@@ -482,19 +487,14 @@ begin
     if (reg_wr) begin
       // IO register write
       case(ca[7:0])
-        8'hB0: com <= cdi;
-        8'hB1: begin
-          int1 <= cdi[6:0];
-          int7_set_req <= cdi[7];
+        8'hB0: com <= cdi; // COM
+        8'hB1: begin // INT
+          int1 <= cdi[6:0]; // INT[6:0]
+          int7_set_req <= cdi[7]; // KWAIT = INT[7]
         end
-        8'hB6: begin
-          // ACK main interrupt acknowledge
-          if (cdi[2]) begin
-            kbds_clr_req <= 1'b1; // ack. keyboard int.
-          end
-          if (cdi[5]) begin
-            flap_clr_req <= 1'b1; // ack. flap int.
-          end
+        8'hB6: begin // ACK
+          kbds_clr_req <= cdi[2]; // ack. keyboard int.
+          flap_clr_req <= cdi[5]; // ack. flap int.
         end
         default: ;
       endcase
