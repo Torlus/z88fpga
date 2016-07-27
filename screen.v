@@ -51,7 +51,6 @@ reg             gry;  // grey (5ms flashing probably)
 reg             und;  // underline (sba[9] when HRS)
 reg     [8:0]   sba;  // screen base attribute (char to render)
 reg             sbar; // sba read flag
-reg     [21:0]  r_va; // memory address register
 reg     [1:0]   pix6b;  // pixel buffer for lores (6 pixels wide)
 reg     [3:0]   pix4b;  // pixel buffer for second step output
 reg             pix6f;  // flag for 2 pixels remaining in pix6b
@@ -69,7 +68,14 @@ assign o_vram_do = vram_do;
 assign o_vram_we = vram_we;
 assign o_frame = frame;
 
-assign va = r_va;
+// Video address
+assign va = (!sbar) ?
+{sbr[10:0], slin[5:3], scol[6:0], clkcnt[0]} : // read SBA LSB then MSB
+(!hrs) ?
+  (sba[8:6] == 3'b111) ? {pb0[12:0], sba[5:0], slin[2:0]} // HRS=0; Lores0 (ROM)
+  : {pb1[9:0], sba[8:0], slin[2:0]}                       // Lores1 (RAM)
+: (und && sba[8]) ? {pb3[10:0], sba[7:0], slin[2:0]}      // HRS=1; Hires1 (RAM)
+  : {pb2[8:0], und, sba[8:0], slin[2:0]};                 // Hires0 (ROM)
 
 // Shortcuts
 wire    [5:0]   slin; // screen line (64)
@@ -108,13 +114,11 @@ begin
     frame <= 1'b0;
   end else begin
 
-    // 1) Set SBA
-    // ----------
+    // 1) Flush buffer
+    // ---------------
+    // (VA and CDI not valid during ZAC)
+    //
     if (!sbar && clkcnt == 2'b10) begin
-      // Z80 is active, data bus not to be used
-      // screen base attribute address LSB (even) for next pulse
-      r_va <= {sbr[10:0], slin[5:3], scol[6:0], 1'b0};
-
       // Flush second nibble (remaining 4 pixels)
       if (pix4f) begin
         vram_do <= pix4b;  // Output remaining pixels (or do nothing if null char or only 2 pixels left)
@@ -130,8 +134,6 @@ begin
     if (!sbar && clkcnt == 2'b00) begin
       // Z80 is not active, grab sba low
       sba[7:0] <= cdi;
-      // screen base attribute address MSB (odd) for next pulse
-      r_va[0] <= 1'b1;
       // Output done
       vram_we <= 1'b0;
       // Increment nibble counter if (!null and pixel buffer just flushed)
@@ -156,15 +158,12 @@ begin
 
     // 4) Set pixel data address
     // -------------------------
-    if (sbar && clkcnt == 2'b10) begin
+    // (VA and CDI not valid during ZAC)
+    //
+    //if (sbar && clkcnt == 2'b10) begin
       // Z80 is active, data bus not to be used
       // pixel data address for next pulse
-      r_va <= (!hrs) ?
-        (sba[8:6] == 3'b111) ? {pb0[12:0], sba[5:0], slin[2:0]} // HRS=0; Lores0 (ROM)
-        : {pb1[9:0], sba[8:0], slin[2:0]}                       // Lores1 (RAM)
-      : (und && sba[8]) ? {pb3[10:0], sba[7:0], slin[2:0]}  // HRS=1; Hires1 (RAM)
-        : {pb2[8:0], und, sba[8:0], slin[2:0]};                      // Hires0 (ROM)
-    end
+    //end
 
     // 5) Output pixel nibble
     // ----------------------
