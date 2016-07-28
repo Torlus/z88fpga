@@ -132,6 +132,7 @@ assign pm1 = (pm1s) ? z80_clk : 1'b0; // Halt stops CPU, Int low restarts.
 // General
 reg     [15:0]  tck;  // tick counter
 wire            pm1s; // Z80 clock switch
+assign pm1s = 1'b1;
 reg     [7:0]   r_cdo; // I/O Port read buffer
 
 // Common control register
@@ -166,7 +167,7 @@ assign  sbrw = sbr;
 
 // Interrupts
 reg     [6:0]   int1; // Interrupt control (WR)
-wire            int7; // int1[7] = KWAIT (WR)
+//wire            int7; // int1[7] = KWAIT (WR)
 wire    [7:0]   sta;  // Interrupt status (RD)
 
 
@@ -398,23 +399,13 @@ always @(posedge mck)
 begin
   if (!rin_n) begin
     r_cdo <= 8'd0;
-    pm1s_clr_req2 <= 1'b0;
-    int7_clr_req <= 1'b0;
   end else begin
-    pm1s_clr_req2 <= 1'b0;
-    int7_clr_req <= 1'b0;
     if (reg_rd) begin // IO Register Read
       case(ca[7:0])
         // STA : interrupt status
         8'hB1: r_cdo <= sta;
-        // KBD : key pressed, reading KBD when KWAIT set will snooze
-        8'hB2: begin
-          r_cdo <= kbd;
-          if (int7) begin
-            //int7_clr_req <= 1'b1;    // clear Kwait
-            //pm1s_clr_req2 <= 1'b1;   // Snooze
-          end
-        end
+        // KBD : key pressed (TODO: reading KBD when KWAIT set will snooze)
+        8'hB2: r_cdo <= kbd;
         // TSTA : Timer status
         8'hB5: r_cdo <= {5'b00000, tsta};
         // TIM0 : 5ms tick counter
@@ -449,28 +440,6 @@ assign intb_n = ~intw;        // to Z80
 // NMI low on flap open, power failure or card insertion (not implemented)
 assign nmib_n = ~flp;
 
-// Wake up from snooze state
-always @(posedge mck)
-begin
-  if (!rin_n) begin
-    pm1s_set_req <= 1'b0;
-  end else begin
-    pm1s_set_req <= intw; // Any INT or key pressed wake up clock
-  end
-end
-
-// Coma state
-always @(posedge mck)
-begin
-  if (!rin_n) begin
-    pm1s_clr_req <= 1'b0;
-  end else begin
-    pm1s_clr_req <= 1'b0; //~hlt_n;   // Stop Z80 clock on HALT
-    // Halt and A15-8=3F does Coma : switch off mck and use sck
-    // (Note : Register I is copied on A15-8 during Halt)
-  end
-end
-
 // COM, INT, ACK (wr)
 always @(posedge mck)
 begin
@@ -479,18 +448,16 @@ begin
     int1 <= 7'h00;
     kbds_clr_req <= 1'b0;
     flap_clr_req <= 1'b0;
-    int7_set_req <= 1'b0;
   end else begin
     kbds_clr_req <= 1'b0;
     flap_clr_req <= 1'b0;
-    int7_set_req <= 1'b0;
     if (reg_wr) begin
       // IO register write
       case(ca[7:0])
         8'hB0: com <= cdi; // COM
         8'hB1: begin // INT
           int1 <= cdi[6:0]; // INT[6:0]
-          int7_set_req <= cdi[7]; // KWAIT = INT[7]
+          //int7_set_req <= cdi[7]; // KWAIT = INT[7]
         end
         8'hB6: begin // ACK
           kbds_clr_req <= cdi[2]; // ack. keyboard int.
@@ -508,7 +475,7 @@ begin
   if (!rin_n) begin
     kbds_set_req <= 1'b0;
   end else begin
-    kbds_set_req <= (key & ~pm1s); // wake up
+    kbds_set_req <= 1'b0; //(key & ~pm1s); // wake up
   end
 end
 
@@ -521,36 +488,6 @@ begin
     flap_set_req <= flp;
   end
 end
-
-// Z80 Clock Status (pm1s) as a RS latch
-reg             pm1s_set_req;
-wire            pm1s_set_ack;
-reg             pm1s_clr_req;
-wire            pm1s_clr_ack;
-reg             pm1s_clr_req2;
-wire            pm1s_clr_ack2;
-
-slatch3 pm1sl (
-  .clk(mck), .res_n(rin_n), .di(1'b1), .q(pm1s),
-  .req0(pm1s_set_req), .d0(1'b1),
-  .req1(pm1s_clr_req), .d1(1'b0),
-  .req2(pm1s_clr_req2), .d2(1'b0),
-  .ack0(pm1s_set_ack), .ack1(pm1s_clr_ack), .ack2(pm1s_clr_ack2)
-);
-
-// INT[7] (KWAIT) as a RS latch
-reg             int7_set_req;
-wire            int7_set_ack;
-reg             int7_clr_req;
-wire            int7_clr_ack;
-
-slatch3 int7l (
-  .clk(mck), .res_n(rin_n), .di(1'b0), .q(int7),
-  .req0(int7_set_req), .d0(1'b1),
-  .req1(int7_clr_req), .d1(1'b0),
-  .req2(1'b0), .d2(1'b0),
-  .ack0(int7_set_ack), .ack1(int7_clr_ack), .ack2()
-);
 
 // Keyboard Interrupt Status (kbds) as a RS latch
 reg             kbds_set_req;
