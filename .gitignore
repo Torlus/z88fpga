@@ -2,6 +2,8 @@ obj_dir
 *.vcd
 *.log
 *.bmp
+*.bak
+*.qws
 syn/db
 syn/incremental_db/**
 syn/output_files
