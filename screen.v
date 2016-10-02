@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 module screen(
 // Inputs:
-mck, rin_n, lcdon, clkcnt,
+clk, clk_ena, rin_n, lcdon, clk_ph,
 cdi,
 pb0, pb1, pb2, pb3, sbr,
 t_1s, t_5ms,
@@ -18,10 +18,11 @@ o_frame
 output          o_frame;
 
 // Clocks and control
-input           mck;
+input           clk;
+input           clk_ena;
 input           rin_n;
 input           lcdon;
-input   [1:0]   clkcnt;
+input   [2:0]   clk_ph;
 input           t_1s;
 input           t_5ms;
 
@@ -65,12 +66,12 @@ reg          frame;
 
 assign o_vram_a = vram_a;
 assign o_vram_do = vram_do;
-assign o_vram_we = vram_we;
+assign o_vram_we = vram_we & clk_ena;
 assign o_frame = frame;
 
 // Video address
 assign va = (!sbar) ?
-{sbr[10:0], slin[5:3], scol[6:0], clkcnt[0]} : // read SBA LSB then MSB
+{sbr[10:0], slin[5:3], scol[6:0], clk_ph[1]} : // read SBA LSB then MSB
 (!hrs) ?
   (sba[8:6] == 3'b111) ? {pb0[12:0], sba[5:0], slin[2:0]} // HRS=0; Lores0 (ROM)
   : {pb1[9:0], sba[8:0], slin[2:0]}                       // Lores1 (RAM)
@@ -101,8 +102,7 @@ assign gry_e = (gry) ? rev_e & {t_5ms,t_5ms,t_5ms,t_5ms,t_5ms,t_5ms,t_5ms,t_5ms}
 assign scr = (fls) ? gry_e & {t_1s,t_1s,t_1s,t_1s,t_1s,t_1s,t_1s,t_1s} : gry_e;
 
 // screen rendering main
-always @(posedge mck)
-begin
+always @(posedge clk) begin
   if (!rin_n | !lcdon) begin
     sbar <= 1'b0;
     scol <= 7'd0;
@@ -112,13 +112,14 @@ begin
     vram_we <= 1'b0;
     // frame flag for BMP debug output
     frame <= 1'b0;
-  end else begin
+  end
+  else if (clk_ena) begin
 
     // 1) Flush buffer
     // ---------------
     // (VA and CDI not valid during ZAC)
     //
-    if (!sbar && clkcnt == 2'b10) begin
+    if (~sbar & clk_ph[2]) begin
       // Flush second nibble (remaining 4 pixels)
       if (pix4f) begin
         vram_do <= pix4b;  // Output remaining pixels (or do nothing if null char or only 2 pixels left)
@@ -131,7 +132,7 @@ begin
 
     // 2) Read SBA LSB
     // ---------------
-    if (!sbar && clkcnt == 2'b00) begin
+    if (~sbar & clk_ph[0]) begin
       // Z80 is not active, grab sba low
       sba[7:0] <= cdi;
       // Output done
@@ -145,7 +146,7 @@ begin
 
     // 3) Read SBA MSB
     // ---------------
-    if (!sbar && clkcnt == 2'b01) begin
+    if (~sbar & clk_ph[1]) begin
       // Z80 is not active, grab sba high
       hrs <= cdi[5];
       rev <= cdi[4];
@@ -160,14 +161,14 @@ begin
     // -------------------------
     // (VA and CDI not valid during ZAC)
     //
-    //if (sbar && clkcnt == 2'b10) begin
+    //if (sbar & clk_ph[2]) begin
       // Z80 is active, data bus not to be used
       // pixel data address for next pulse
     //end
 
     // 5) Output pixel nibble
     // ----------------------
-    if (sbar && clkcnt == 2'b00) begin
+    if (sbar & clk_ph[0]) begin
       // Z80 is not active, grab pixels and output first nibble
       if (!hrs || cursor) begin
         // LRS or cursor
@@ -205,7 +206,7 @@ begin
 
     // 6) Increment counters
     // -------------------------------------------
-    if (sbar && clkcnt == 2'b01) begin
+    if (sbar & clk_ph[1]) begin
       // Next cycle read sba
       sbar <= 1'b0;
       // Output done

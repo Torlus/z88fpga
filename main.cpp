@@ -105,8 +105,7 @@ int main(int argc, char **argv, char **env)
     top->ram_do = 0;
     top->rom_do = 0;
 
-    top->ps2clk = 1;
-    top->ps2dat = 1;
+    top->kbmatrix = (vluint64_t)0;
 
     tb_sstep = 0;  // Simulation steps (64 bits)
     tb_time = 0;  // Simulation time in ps (64 bits)
@@ -195,7 +194,7 @@ int main(int argc, char **argv, char **env)
 
         // Simulate VRAM behaviour
         if (top->clk) {
-          top->vram_rp_do = VRAM[top->vram_rp_a & (VRAM_SIZE-1)] & 0x0f;
+          //top->vram_rp_do = VRAM[top->vram_rp_a & (VRAM_SIZE-1)] & 0x0f;
           if (top->vram_wp_we) {
             VRAM[top->vram_wp_a & (VRAM_SIZE-1)] = (top->vram_wp_di & 0x0f);
           }
@@ -227,7 +226,7 @@ int main(int argc, char **argv, char **env)
             }
           }
           first = true;
-          opc[opcn] = top->v__DOT__z80_cdi;
+          opc[opcn] = top->v__DOT__w_z80_cdi;
           ++opcn;
           regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
           regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
@@ -265,7 +264,7 @@ int main(int argc, char **argv, char **env)
         m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
 
         if (top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && mreq_prev) {
-          opc[opcn] = top->v__DOT__z80_cdi;
+          opc[opcn] = top->v__DOT__w_z80_cdi;
           ++opcn;
         }
         mreq_prev = top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;

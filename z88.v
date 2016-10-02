@@ -1,70 +1,49 @@
-module z88 (
-  // Outputs
-  ram_a, ram_di, ram_ce_n, ram_oe_n, ram_we_n,
-  rom_a, rom_ce_n, rom_oe_n,
-  vram_wp_a, vram_wp_we, vram_wp_di,
-  lcdon,
-  frame, t_1s,
+module z88
+(
+    // Clocks, Reset switch, Flap switch
+    input           clk,
+    input           reset_n,
+    input           flap,  // normally closed =0, open =1
 
-  // Debug
-  kbdval,
-  pm1s,
-  kbds,
-  ints,
-  key,
+    // Debug output
+    output          frame,  // BMP generator
+    output          t_1s,   // 1 second blinking LED
+    output  [7:0]   kbdval,
+    output          pm1s,
+    output          kbds,
+    output          ints,
+    output          key,
 
-  // Inputs
-  clk, reset_n,
-  ram_do,
-  rom_do,
-  flap,
-  kbmatrix
+    // LCD on/off
+    output          lcdon,
+
+    // Keyboard matrix
+    input   [63:0]  kbmatrix, // 8*8 keys
+
+    // Internal RAM (512KB)
+    output  [18:0]  ram_a,
+    output  [7:0]   ram_di,
+    input   [7:0]   ram_do,
+    output          ram_ce_n,
+    output          ram_oe_n,
+    output          ram_we_n,
+
+    // Internal ROM (512KB)
+    output  [18:0]  rom_a,
+    input   [7:0]   rom_do,
+    output          rom_ce_n,
+    output          rom_oe_n,
+
+    // Dual-port VRAM write port (8KB)
+    output          vram_wp_we,
+    output  [13:0]  vram_wp_a,
+    output  [3:0]   vram_wp_di
 );
 
-// Debug output
-output          frame;  // BMP generator
-output          t_1s;   // 1 second blinking LED
-output  [7:0]   kbdval;
-output          pm1s;
-output          kbds;
-output          ints;
-output          key;
+    assign ints = ~z88_int_n;
 
-assign ints = ~z88_int_n;
-
-
-// Clocks, Reset switch, Flap switch
-input           clk;
-input           reset_n;
-input           flap;  // normally closed =0, open =1
-
-// LCD on/off
-output          lcdon;
-
-// Keyboard matrix
-input   [63:0]  kbmatrix; // 8*8 keys
-
-// Internal RAM (512KB)
-output  [18:0]  ram_a;
-output  [7:0]   ram_di;
-input   [7:0]   ram_do;
-output          ram_ce_n;
-output          ram_oe_n;
-output          ram_we_n;
-
-// Internal ROM (512KB)
-output  [18:0]  rom_a;
-input   [7:0]   rom_do;
-output          rom_ce_n;
-output          rom_oe_n;
-
-// Dual-port VRAM write port (8KB)
-output          vram_wp_we;
-output  [13:0]  vram_wp_a;
-output  [3:0]   vram_wp_di;
 
 // Z88 PCB glue
-wire            z88_mck;      // master clock
 wire            z88_sck;      // standby clock
 wire            z88_pm1;      // Z80 clock
 wire            z88_m1_n;
@@ -72,7 +51,6 @@ wire            z88_mreq_n;
 wire            z88_iorq_n;
 wire            z88_rd_n;
 wire            z88_halt_n;
-wire            z88_reset_n;
 wire            z88_flap;
 wire            z88_int_n;
 wire            z88_nmi_n;
@@ -85,28 +63,77 @@ wire    [7:0]   vid_cdi;
 wire    [7:0]   z88_cdi;
 wire            z88_ipce_n;
 wire            z88_irce_n;
-wire            z88_se1_n;
-wire            z88_se2_n;
-wire            z88_se3_n;
+wire     [3:1]  z88_esel_n;
 wire            z88_roe_n;
 wire            z88_wrb_n;
 wire            z88_rin_n;
 wire            z88_rout_n;
 wire    [63:0]  z88_kbmat;
-wire            z88_lcdon;
+wire            z88_lcdon = 1'b1;
 wire    [12:0]  z88_pb0;
 wire    [9:0]   z88_pb1;
 wire    [8:0]   z88_pb2;
 wire    [10:0]  z88_pb3;
 wire    [10:0]  z88_sbr;
-wire    [1:0]   z88_clkcnt;
+wire    [2:0]   z88_clk_ph;
 wire    [21:0]  z88_va;
 wire            z88_t1s;
 wire            z88_t5ms;
 
 // Clock and Control
-assign z88_reset_n = reset_n;
-assign z88_mck = clk;
+
+reg [4:0] r_clk_ena;
+
+always@(negedge reset_n or posedge clk) begin : CLK_ENA
+
+    if (!reset_n) begin
+        r_clk_ena <= 5'b00001;
+    end
+    else begin
+        r_clk_ena <= { r_clk_ena[3:0], r_clk_ena[4] };
+    end
+end
+
+reg [7:0] r_ram_di;
+wire [7:0] w_z80_cdi;
+reg  [7:0] r_z80_cdi;
+wire [7:0] w_lcd_cdi;
+reg  [7:0] r_lcd_cdi;
+
+always@(negedge reset_n or posedge clk) begin : DATA_BUS
+
+    if (!reset_n) begin
+        r_ram_di  <= 8'h00;
+        r_z80_cdi <= 8'h00;
+        r_lcd_cdi <= 8'h00;
+    end
+    else begin
+        // Z80 writes to RAM
+        r_ram_di <= z80_do;
+        // Z80 reads from RAM/ROM/Blink
+        if (r_clk_ena[3] & z88_clk_ph[2]) begin
+            if (!z88_irce_n)
+                // RAM
+                r_z80_cdi <= ram_do;
+            else
+                // Blink
+                r_z80_cdi <= z80_cdi;
+        end
+        // LCD reads from RAM/ROM
+        if (r_clk_ena[3] & ~z88_clk_ph[2]) begin
+            if (!z88_irce_n)
+                // RAM
+                r_lcd_cdi <= ram_do;
+            else
+                // No read
+                r_lcd_cdi <= 8'h00;
+        end
+    end
+end
+
+assign w_z80_cdi = (z88_ipce_n) ? r_z80_cdi : rom_do;
+assign w_lcd_cdi = (z88_ipce_n) ? r_lcd_cdi : rom_do;
+
 assign z88_kbmat = kbmatrix;
 assign lcdon = z88_lcdon;
 assign t_1s = z88_t1s;
@@ -124,14 +151,15 @@ assign rom_a = z88_ma[18:0];
 assign rom_oe_n = z88_roe_n;
 assign rom_ce_n = z88_ipce_n;
 
-assign z88_cdi = (!z88_ipce_n && !z88_roe_n) ? rom_do
-                : (!z88_irce_n & !z88_roe_n) ? ram_do
-                : (!z88_iorq_n & z88_rd_n) ? z80_do
-                : (!z88_mreq_n & z88_rd_n) ? z80_do
-                : 8'b11111111;
+//assign z88_cdi = (!z88_ipce_n && !z88_roe_n) ? rom_do
+//                : (!z88_irce_n & !z88_roe_n) ? ram_do
+//                : (!z88_iorq_n & z88_rd_n) ? z80_do
+//                : (!z88_mreq_n & z88_rd_n) ? z80_do
+//                : 8'b11111111;
 
 // Z80 instance
-tv80s z80 (
+tv80s z80
+(
   .m1_n(z88_m1_n),
   .mreq_n(z88_mreq_n),
   .iorq_n(z88_iorq_n),
@@ -142,52 +170,52 @@ tv80s z80 (
   .busak_n(),               // not wired
   .A(z88_ca),
   .dout(z80_do),
-  .reset_n(z88_rout_n),
+  .reset_n(reset_n),
   .clk(clk),
   .wait_n(1'b1),            // not wired
   .int_n(z88_int_n),
   .nmi_n(z88_nmi_n),
   .busrq_n(1'b1),           // not wired
-  .di(z80_cdi),
-  .cen(z88_pm1)
+  .di(w_z80_cdi),
+  .cen(z88_clk_ph[2] & r_clk_ena[4])
 );
 
 // Blink instance
-blink theblink (
-  .rout_n(z88_rout_n),
-  .rin_n(z88_reset_n),
+blink theblink
+(
+  .rst(~reset_n),
   .flp(z88_flap),
-  .mck(z88_mck),
-  .sck(z88_sck),
-  .pm1(z88_pm1),
-  .cdi(z88_cdi),
-  .z80_cdo(z80_cdi),
-  .vid_cdo(vid_cdi),
-  .ca(z88_ca),
-  .va(z88_va),
-  .ma(z88_ma),
-  .hlt_n(z88_halt_n),
-  .nmib_n(z88_nmi_n),
-  .intb_n(z88_int_n),
-  .ior_n(z88_iorq_n),
-  .mrq_n(z88_mreq_n),
-  .cm1_n(z88_m1_n),
-  .crd_n(z88_rd_n),
-  .wrb_n(z88_wrb_n),
-  .roe_n(z88_roe_n),
-  .ipce_n(z88_ipce_n),
-  .irce_n(z88_irce_n),
-  .se1_n(z88_se1_n),
-  .se2_n(z88_se2_n),
-  .se3_n(z88_se3_n),
+  .clk(clk),
+  .clk_ena(r_clk_ena[4]),
+  .clk_ph(z88_clk_ph),
+  // Z80 bus
+  .z80_hlt_n(z88_halt_n),
+  .z80_crd_n(z88_rd_n),
+  .z80_cm1_n(z88_m1_n),
+  .z80_mrq_n(z88_mreq_n),
+  .z80_ior_n(z88_iorq_n),
+  .z80_addr(z88_ca),
+  .z80_wdata(z80_do),
+  .z80_rdata(z80_cdi),
+  .z80_nmi_n(z88_nmi_n),
+  .z80_int_n(z88_int_n),
+  // LCD control
+  .lcd_addr(z88_va),
+//  .lcd_on(z88_lcdon),
+  .lcd_pb0(z88_pb0),
+  .lcd_pb1(z88_pb1),
+  .lcd_pb2(z88_pb2),
+  .lcd_pb3(z88_pb3),
+  .lcd_sbr(z88_sbr),
+  // External bus
+  .ext_oe_n(z88_roe_n),
+  .ext_we_n(z88_wrb_n),
+  .ram_cs_n(z88_irce_n),
+  .rom_cs_n(z88_ipce_n),
+  .ext_cs_n(z88_esel_n),
+  .ext_addr(z88_ma),
+
   .kbmat(z88_kbmat),
-  .lcdon(z88_lcdon),
-  .pb0w(z88_pb0),
-  .pb1w(z88_pb1),
-  .pb2w(z88_pb2),
-  .pb3w(z88_pb3),
-  .sbrw(z88_sbr),
-  .clkcnt(z88_clkcnt),
   .t_1s(z88_t1s),
   .t_5ms(z88_t5ms),
   .kbdval(kbdval),  // Debug
@@ -198,11 +226,12 @@ blink theblink (
 
 // Screen instance
 screen thescreen (
-  .mck(z88_mck),
-  .clkcnt(z88_clkcnt),
-  .rin_n(z88_reset_n),
+  .clk(clk),
+  .clk_ena(r_clk_ena[4]),
+  .clk_ph(z88_clk_ph),
+  .rin_n(reset_n),
   .lcdon(z88_lcdon),
-  .cdi(vid_cdi),
+  .cdi(w_lcd_cdi),
   .pb0(z88_pb0),
   .pb1(z88_pb1),
   .pb2(z88_pb2),

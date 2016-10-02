@@ -78,14 +78,14 @@ wire  [11:0]  rgb;
 // Internal RAM
 wire  [18:0]  ram_a;
 wire  [7:0]   ram_di;
-wire  [7:0]   ram_do;
+reg   [7:0]   r_ram_do;
 wire          ram_ce_n;
 wire          ram_oe_n;
 wire          ram_we_n;
 
 // Internal ROM
 wire  [18:0]  rom_a;
-wire  [7:0]   rom_do;
+reg   [7:0]   r_rom_do;
 wire          rom_ce_n;
 wire          rom_oe_n;
 
@@ -106,12 +106,12 @@ assign  HEX2 = 7'h7F;
 assign  HEX3 = 7'h7F;
 
 assign  LEDR = SW[9:0];
-assign  LEDG = {t_1s, pm1s, ints, kbds, key, 1'b0, flap, reset_n};
+assign  LEDG = {t_1s, pm1s, ints, kbds, key, 1'b0, flap, ~rst};
 
 assign  ps2clk = PS2_CLK;
 assign  ps2dat = PS2_DAT;
-assign  PS2_CLK = (!reset_n) ? 1'b0 : 1'bZ;
-assign  PS2_DAT = (!reset_n) ? 1'b0 : 1'bZ;
+assign  PS2_CLK = (rst) ? 1'b0 : 1'bZ;
+assign  PS2_DAT = (rst) ? 1'b0 : 1'bZ;
 
 assign  VGA_HS = hsync;
 assign  VGA_VS = vsync;
@@ -120,25 +120,33 @@ assign  VGA_G = rgb[7:4];
 assign  VGA_B = rgb[11:8];
 
 // 4MB Flash to 512KB Flash
-//assign  FL_ADDR = { 3'b0, rom_a[18:0] };
+assign  FL_ADDR = { 3'b0, rom_a[18:0] };
 // 4MB Flash to 128KB Flash
-assign  FL_ADDR = { 5'b0, rom_a[16:0] };
+//assign  FL_ADDR = { 5'b0, rom_a[16:0] };
 assign  FL_OE_N = rom_oe_n;
 assign  FL_CE_N = rom_ce_n;
 assign  FL_RST_N = 1'b1;
 assign  FL_WE_N = 1'b1;
-assign  rom_do = FL_DQ;
+always@(posedge CLOCK_50) r_rom_do <= FL_DQ[7:0];
 assign  FL_DQ = 8'bZZZZZZZZ;
 
 // 256K*16b SRAM to 512KB SRAM
-assign  SRAM_ADDR[17:0] = ram_a[18:1];
-assign  SRAM_UB_N = (ram_a[0] == 1'b0) ? 1'b1 : 1'b0;
-assign  SRAM_LB_N = (ram_a[0] == 1'b0) ? 1'b0 : 1'b1;
+assign  SRAM_ADDR[17:0] = ram_a[17:0];
+assign  SRAM_UB_N = 1'b1;
+assign  SRAM_LB_N = 1'b0;
 assign  SRAM_CE_N = ram_ce_n;
 assign  SRAM_OE_N = ram_oe_n;
 assign  SRAM_WE_N = ram_we_n;
-assign  ram_do = (ram_a[0] == 1'b0) ? SRAM_DQ[7:0] : SRAM_DQ[15:8];
+always@(posedge CLOCK_50) r_ram_do <= SRAM_DQ[7:0];
 assign  SRAM_DQ = (!ram_we_n) ? { ram_di, ram_di } : 16'bZZZZZZZZ_ZZZZZZZZ;
+
+reg [6:0] r_rst_n;
+reg       rst;
+
+always@(posedge CLOCK_50) begin : RESET
+    r_rst_n <= { r_rst_n[5:0], reset_n };
+    rst <= (r_rst_n[6:2] == 5'b00000) ? 1'b1 : 1'b0;
+end
 
 // Clocks
 z88_de1_pll pll (
@@ -153,7 +161,7 @@ vram video (
   .rdaddress(vram_rp_a),
   .rdclock(clk25),
   .wraddress(vram_wp_a),
-  .wrclock(clk),
+  .wrclock(CLOCK_50),
   .wren(vram_wp_we),
   .q(vram_rp_do)
 );
@@ -180,10 +188,10 @@ z88 z88de1 (
   .frame(),
   .t_1s(t_1s),
 
-  .clk(clk),
-  .reset_n(reset_n),
-  .ram_do(ram_do),
-  .rom_do(rom_do),
+  .clk(CLOCK_50),
+  .reset_n(~rst),
+  .ram_do(r_ram_do),
+  .rom_do(r_rom_do),
   .flap(flap),
 
    // Debug
@@ -197,7 +205,7 @@ z88 z88de1 (
 // VGA controller
 vga thevga (
   .vclk(clk25),            // 25.175MHz clock
-  .reset_n(reset_n),
+  .reset_n(~rst),
   .lcdon(lcdon),
   .vram_a(vram_rp_a),
   .vram_do(vram_rp_do),
@@ -208,10 +216,10 @@ vga thevga (
 
 // PS2 controller
 ps2 theps2 (
-  .reset_n(reset_n),
+  .reset_n(~rst),
   .ps2clk(ps2clk),
   .ps2dat(ps2dat),
-  .clk(clk),
+  .clk(CLOCK_50),
   .kbmat_out(kbmatrix)
 );
 
