@@ -4,7 +4,7 @@ module z88
     input           clk,
     input           reset_n,
     input           flap,  // normally closed =0, open =1
-
+    
     // Debug output
     output          frame,  // BMP generator
     output          t_1s,   // 1 second blinking LED
@@ -13,13 +13,13 @@ module z88
     output          kbds,
     output          ints,
     output          key,
-
+    
     // LCD on/off
     output          lcdon,
-
+    
     // Keyboard matrix
     input   [63:0]  kbmatrix, // 8*8 keys
-
+    
     // Internal RAM (512KB)
     output  [18:0]  ram_a,
     output  [7:0]   ram_di,
@@ -27,13 +27,13 @@ module z88
     output          ram_ce_n,
     output          ram_oe_n,
     output          ram_we_n,
-
+    
     // Internal ROM (512KB)
     output  [18:0]  rom_a,
     input   [7:0]   rom_do,
     output          rom_ce_n,
     output          rom_oe_n,
-
+    
     // Dual-port VRAM write port (8KB)
     output          vram_wp_we,
     output  [13:0]  vram_wp_a,
@@ -41,13 +41,13 @@ module z88
 );
 
     assign ints = ~z88_int_n;
-
+    
 
 // Z88 PCB glue
 wire            z88_sck;      // standby clock
-wire            z88_pm1;      // Z80 clock
-wire            z88_m1_n;
-wire            z88_mreq_n;
+wire            z88_pm1 /* verilator public */;      // Z80 clock
+wire            z88_m1_n /* verilator public */;
+wire            z88_mreq_n /* verilator public */;
 wire            z88_iorq_n;
 wire            z88_rd_n;
 wire            z88_halt_n;
@@ -69,13 +69,18 @@ wire            z88_wrb_n;
 wire            z88_rin_n;
 wire            z88_rout_n;
 wire    [63:0]  z88_kbmat;
+`ifdef verilator3
+wire            z88_lcdon;
+`else
 wire            z88_lcdon = 1'b1;
+`endif
 wire    [12:0]  z88_pb0;
 wire    [9:0]   z88_pb1;
 wire    [8:0]   z88_pb2;
 wire    [10:0]  z88_pb3;
 wire    [10:0]  z88_sbr;
 wire    [2:0]   z88_clk_ph;
+wire    [2:0]   z88_clk_ph_adv;
 wire    [21:0]  z88_va;
 wire            z88_t1s;
 wire            z88_t5ms;
@@ -90,12 +95,12 @@ always@(negedge reset_n or posedge clk) begin : CLK_ENA
         r_clk_ena <= 5'b00001;
     end
     else begin
-        r_clk_ena <= { r_clk_ena[3:0], r_clk_ena[4] };
+        r_clk_ena <= { r_clk_ena[3:0], r_clk_ena[4] }; 
     end
 end
 
 reg [7:0] r_ram_di;
-wire [7:0] w_z80_cdi;
+wire [7:0] w_z80_cdi /* verilator public */;
 reg  [7:0] r_z80_cdi;
 wire [7:0] w_lcd_cdi;
 reg  [7:0] r_lcd_cdi;
@@ -186,8 +191,9 @@ blink theblink
   .rst(~reset_n),
   .flp(z88_flap),
   .clk(clk),
-  .clk_ena(r_clk_ena[4]),
+  .clk_ena(r_clk_ena),
   .clk_ph(z88_clk_ph),
+  .clk_ph_adv(z88_clk_ph_adv),
   // Z80 bus
   .z80_hlt_n(z88_halt_n),
   .z80_crd_n(z88_rd_n),
@@ -201,7 +207,11 @@ blink theblink
   .z80_int_n(z88_int_n),
   // LCD control
   .lcd_addr(z88_va),
-//  .lcd_on(z88_lcdon),
+`ifdef verilator3
+  .lcd_on(z88_lcdon),
+`else
+  //.lcd_on(z88_lcdon),
+`endif
   .lcd_pb0(z88_pb0),
   .lcd_pb1(z88_pb1),
   .lcd_pb2(z88_pb2),
@@ -214,7 +224,7 @@ blink theblink
   .rom_cs_n(z88_ipce_n),
   .ext_cs_n(z88_esel_n),
   .ext_addr(z88_ma),
-
+  
   .kbmat(z88_kbmat),
   .t_1s(z88_t1s),
   .t_5ms(z88_t5ms),
@@ -229,6 +239,7 @@ screen thescreen (
   .clk(clk),
   .clk_ena(r_clk_ena[4]),
   .clk_ph(z88_clk_ph),
+  .clk_ph_adv(z88_clk_ph_adv),
   .rin_n(reset_n),
   .lcdon(z88_lcdon),
   .cdi(w_lcd_cdi),

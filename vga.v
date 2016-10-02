@@ -14,12 +14,13 @@
 //
 
 module vga (
-vclk, reset_n, lcdon,
+vclk, vclk_ena, reset_n, lcdon,
 vram_a, vram_do,
 hsync, vsync, rgb
 );
 
 input								vclk;
+input								vclk_ena;
 input								reset_n;
 input								lcdon;
 input			[3:0]			vram_do;
@@ -45,7 +46,8 @@ always @(posedge vclk) begin
   if (!reset_n || !lcdon) begin
 		hcount <= 10'd0;
 		vcount <= 10'd0;
-	end else begin
+	end 
+    else if (vclk_ena) begin
 		if (hcount == 10'd799) begin
 			hcount <= 10'd0;
       if (vcount == 10'd524) begin
@@ -64,14 +66,15 @@ always @(posedge vclk) begin
   if(!reset_n || !lcdon) begin
 		hsync <= 1'b1;
 		vsync <= 1'b1;
-	end else begin
-  	hsync <= ~(hcount[9:0] < 96);  // pixels 0-95 : sync
-  	vsync <= ~(vcount[9:1] == 0);  // lines 0-1 : sync
+	end
+    else if (vclk_ena) begin
+  	    hsync <= ~(hcount[9:0] < 96);  // pixels 0-95 : sync
+  	    vsync <= ~(vcount[9:1] == 0);  // lines 0-1 : sync
 	end
 end
 
 // start display at nibble : (96+40+8)/4=36
-assign line   = (vcount[9:6] == 3'b100) ? vcount[5:0] : 6'b111111;
+assign line   = (vcount[9:6] == 4'b0100) ? vcount[5:0] : 6'b111111;
 assign nibble = (hcount[9:2] >= 8'd036 && hcount[9:2] <= 8'd195) ? (hcount[9:2]-8'd036) : 8'b11111111;
 
 assign vram_a = {line[5:0], nibble[7:0]};

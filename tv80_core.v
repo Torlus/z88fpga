@@ -91,13 +91,15 @@ module tv80_core (/*AUTOARG*/
   parameter     aZI      = 3'b110;
 
   // Registers
-  reg [7:0]     ACC, F;
+  reg [7:0]     ACC /* verilator public */;
+  reg [7:0]     F /* verilator public */;
   reg [7:0]     Ap, Fp;
   reg [7:0]     I;
 `ifdef TV80_REFRESH
   reg [7:0]     R;
 `endif
-  reg [15:0]    SP, PC;
+  reg [15:0]    SP /* verilator public */;
+  reg [15:0]    PC /* verilator public */;
   reg [7:0]     RegDIH;
   reg [7:0]     RegDIL;
   wire [15:0]   RegBusA;

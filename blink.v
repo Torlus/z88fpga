@@ -5,12 +5,13 @@ module blink
     // 50MHz Master Clock
     input         clk,
     // 10MHz equivalent clock
-    input         clk_ena,
+    input   [4:0] clk_ena,
     // 3.3MHz equivalent clock
     output  [2:0] clk_ph,
+    output  [2:0] clk_ph_adv,
     // Standby
     output        pm1s,
-
+    
     // Z80 bus
     input         z80_hlt_n,    // HALT Coma/Standby command
     input         z80_crd_n,    // RD from Z80
@@ -22,7 +23,7 @@ module blink
     output  [7:0] z80_rdata,    // Z80 data bus (read)
     output        z80_nmi_n,    // NMI
     output        z80_int_n,    // INT
-
+    
     // LCD control
     input  [21:0] lcd_addr,
     output        lcd_on,
@@ -31,7 +32,7 @@ module blink
     output  [8:0] lcd_pb2,
     output [10:0] lcd_pb3,
     output [10:0] lcd_sbr,
-
+    
     // External bus
     output        ext_oe_n,     // RAM/ROM output enable
     output        ext_we_n,     // Write enable
@@ -39,17 +40,17 @@ module blink
     output        rom_cs_n,     // Slot 0 ROM access
     output  [3:1] ext_cs_n,     // Slots 1-3 access
     output [21:0] ext_addr,     // Physical memory (22 bits address bus)
-
+    
     // Keyboard
     input  [63:0] kbmat,
     output  [7:0] kbdval,
     output        kbds,
     output        key,
-
+    
     // Clocks
     output        t_1s,     // 1s for cursor, flash effect
     output        t_5ms,    // 5ms for grey effect
-
+    
     // Flap
     input         flp       // Flap switch (high if opened for card insertion or hard reset)
 );
@@ -81,33 +82,41 @@ module blink
 reg     [7:0]   r_cdi;
 
 // Clock phases
+reg   [2:0]   r_clk_ph_adv; // Advanced by 2 cycles
 reg   [2:0]   r_clk_ph;
 
 always @(posedge rst or posedge clk) begin
 
     if (rst) begin
-        r_clk_ph <= 3'b001;
+        r_clk_ph_adv <= 3'b001;
+        r_clk_ph     <= 3'b000;
     end
-    else if (clk_ena) begin
-        r_clk_ph <= { r_clk_ph[1:0], r_clk_ph[2] };
+    else begin
+        if (clk_ena[2]) begin
+            r_clk_ph_adv <= { r_clk_ph_adv[1:0], r_clk_ph_adv[2] };
+        end
+        if (clk_ena[4]) begin
+            r_clk_ph <= r_clk_ph_adv;
+        end
     end
 end
 
-assign clk_ph = r_clk_ph;
-assign pm1s   = 1'b1;
+assign clk_ph     = r_clk_ph;
+assign clk_ph_adv = r_clk_ph_adv;
+assign pm1s       = 1'b1;
 
 // General
 reg     [15:0]  tck;  // tick counter
 reg     [7:0]   r_cdo; // I/O Port read buffer
 
 // Common control register
-reg     [7:0]   com;      // IO $B0
+reg     [7:0]   com /* verilator public */;      // IO $B0
 
 // Bank switching (WR only)
-reg     [7:0]   sr0;
-reg     [7:0]   sr1;
-reg     [7:0]   sr2;
-reg     [7:0]   sr3;
+reg     [7:0]   sr0 /* verilator public */;
+reg     [7:0]   sr1 /* verilator public */;
+reg     [7:0]   sr2 /* verilator public */;
+reg     [7:0]   sr3 /* verilator public */;
 
 // Screen
 reg     [12:0]  pb0;  // Lores0 (RAM, 64 char, 512B)
@@ -149,8 +158,8 @@ always @(posedge rst or posedge clk) begin : Z80_MMU
     if (rst) begin
         r_za <= 22'd0;
     end
-    else if (clk_ena) begin
-
+    else if (clk_ena[4]) begin
+    
         if (r_clk_ph[0]) begin
             casez (z80_addr[15:13])
                 // 0000-1FFF : Bank $00 !RAMS, Bank $20 RAMS
@@ -189,7 +198,7 @@ always @(posedge rst or posedge clk) begin : EXT_BUS
         r_ext_addr <= 22'd0;
     end
     else begin
-        if (r_clk_ph[2]) begin
+        if (r_clk_ph_adv[2]) begin
             // Z80 access
             r_ext_oe_n    <= z80_mrq_n |  z80_crd_n;
             r_ext_we_n    <= z80_mrq_n | ~z80_crd_n;
@@ -272,7 +281,7 @@ always @(posedge rst or posedge clk) begin : LCD_REGS_WR
     pb3 <= 11'd0;
     sbr <= 11'd0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     if (w_reg_wr) begin // IO Register Write
       case(z80_addr[7:0])
         8'h70: pb0 <= {z80_addr[12:8], z80_wdata};
@@ -295,7 +304,7 @@ always @(posedge rst or posedge clk) begin : SEG_REGS_WR
     sr2 <= 8'd0;
     sr3 <= 8'd0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     if (w_reg_wr) begin // IO Register Write
       case(z80_addr[7:0])
         8'hD0: sr0 <= z80_wdata;
@@ -350,7 +359,7 @@ always @(posedge clk) begin
     timm <= 21'd0;
     tsta_set_req <= 3'd0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     tsta_set_req <= 3'd0;
     if (tck == 16'd49152) begin
       tck <= 16'd0;
@@ -383,7 +392,7 @@ always @(posedge rst or posedge clk) begin
   if (rst) begin
     tsta_clr_req <= 3'd0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     tsta_clr_req <= 3'd0;
     if (w_reg_wr && z80_addr[7:0] == 8'hB4) begin
       for(i = 0; i < 3; i = i + 1) begin
@@ -401,7 +410,7 @@ always @(posedge rst or posedge clk) begin
   if (rst) begin
     tmk <= 3'd0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     if (w_reg_wr && z80_addr[7:0] == 8'hB5) begin
       tmk <= z80_wdata[2:0];
     end
@@ -414,7 +423,7 @@ always @(posedge rst or posedge clk) begin
   if (rst) begin
     r_cdo <= 8'd0;
   end
-  else if (clk_ena)  begin
+  else if (clk_ena[4])  begin
     if (w_reg_rd) begin // IO Register Read
       case(z80_addr[7:0])
         // STA : interrupt status
@@ -462,7 +471,7 @@ always @(posedge rst or posedge clk) begin
     kbds_clr_req <= 1'b0;
     flap_clr_req <= 1'b0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     kbds_clr_req <= 1'b0;
     flap_clr_req <= 1'b0;
     if (w_reg_wr) begin
@@ -489,7 +498,7 @@ always @(posedge rst or posedge clk) begin
   if (rst) begin
     kbds_set_req <= 1'b0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     kbds_set_req <= 1'b0; //(key & ~pm1s); // wake up
   end
 end
@@ -500,7 +509,7 @@ always @(posedge rst or posedge clk) begin
   if (rst) begin
     flap_set_req <= 1'b0;
   end
-  else if (clk_ena) begin
+  else if (clk_ena[4]) begin
     flap_set_req <= flp;
   end
 end

@@ -62,15 +62,23 @@ module tv80_reg (/*AUTOARG*/
 
   // break out ram bits for waveform debug
 // synopsys translate_off
-  wire [7:0] B = RegsH[0];
-  wire [7:0] C = RegsL[0];
-  wire [7:0] D = RegsH[1];
-  wire [7:0] E = RegsL[1];
-  wire [7:0] H = RegsH[2];
-  wire [7:0] L = RegsL[2];
+  wire [7:0] B /* verilator public */;
+  assign B = RegsH[0];
+  wire [7:0] C /* verilator public */;
+  assign C = RegsL[0];
+  wire [7:0] D /* verilator public */;
+  assign D = RegsH[1];
+  wire [7:0] E /* verilator public */;
+  assign E = RegsL[1];
+  wire [7:0] H /* verilator public */;
+  assign H = RegsH[2];
+  wire [7:0] L /* verilator public */;
+  assign L = RegsL[2];
 
-  wire [15:0] IX = { RegsH[3], RegsL[3] };
-  wire [15:0] IY = { RegsH[7], RegsL[7] };
+  wire [15:0] IX /* verilator public */;
+  assign IX = { RegsH[3], RegsL[3] };
+  wire [15:0] IY /* verilator public */;
+  assign IY = { RegsH[7], RegsL[7] };
 // synopsys translate_on
   
 endmodule

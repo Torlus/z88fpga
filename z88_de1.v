@@ -1,53 +1,59 @@
-module z88_de1 (
-  SW, HEX0, HEX1, HEX2, HEX3,
-  KEY, LEDR, LEDG,
-  CLOCK_24, CLOCK_27, CLOCK_50, EXT_CLOCK,
-  FL_ADDR, FL_DQ, FL_CE_N, FL_OE_N, FL_RST_N, FL_WE_N,
-  SRAM_ADDR, SRAM_CE_N,	SRAM_DQ, SRAM_LB_N, SRAM_OE_N, SRAM_UB_N, SRAM_WE_N,
-  VGA_R, VGA_G, VGA_B, VGA_VS, VGA_HS,
-  PS2_CLK, PS2_DAT
+module z88_de1
+(
+    input   [1:0] CLOCK_27,
+    input   [1:0] CLOCK_24,
+    input         CLOCK_50,
+    input         EXT_CLOCK,
+    
+    input   [9:0] SW,
+    
+    output  [6:0] HEX0,
+    output  [6:0] HEX1,
+    output  [6:0] HEX2,
+    output  [6:0] HEX3,
+    
+    input   [3:0] KEY,
+    
+    output  [9:0] LEDR,
+    output  [7:0] LEDG,
+    
+    
+    inout         PS2_CLK,
+    inout         PS2_DAT,
+    
+    output  [3:0] VGA_R,
+    output  [3:0] VGA_G,
+    output  [3:0] VGA_B,
+    output        VGA_HS,
+    output        VGA_VS,
+    
+    output [21:0] FL_ADDR,
+    `ifdef verilator3
+    input   [7:0] FL_D,
+    output  [7:0] FL_Q,
+    `else
+    inout   [7:0] FL_DQ,
+    `endif
+    output        FL_OE_N,
+    output        FL_RST_N,
+    output        FL_WE_N,
+    output        FL_CE_N,
+    
+    output [17:0] SRAM_ADDR,
+    output        SRAM_CE_N,
+    `ifdef verilator3
+    input  [15:0] SRAM_D,
+    output [15:0] SRAM_Q,
+    `else
+    inout  [15:0] SRAM_DQ,
+    `endif
+    output        SRAM_LB_N,
+    output        SRAM_OE_N,
+    output        SRAM_UB_N,
+    output        SRAM_WE_N
 );
 
-input [9:0] SW;
 
-output  [6:0] HEX0;
-output  [6:0] HEX1;
-output  [6:0] HEX2;
-output  [6:0] HEX3;
-
-input   [3:0] KEY;
-
-output  [9:0] LEDR;
-output  [7:0] LEDG;
-
-input   [1:0] CLOCK_27;
-input   [1:0] CLOCK_24;
-input         CLOCK_50;
-input         EXT_CLOCK;
-
-inout         PS2_CLK;
-inout         PS2_DAT;
-
-output  [3:0] VGA_R;
-output  [3:0] VGA_G;
-output  [3:0] VGA_B;
-output        VGA_HS;
-output        VGA_VS;
-
-output  [21:0]  FL_ADDR;
-inout   [7:0]   FL_DQ;
-output        FL_OE_N;
-output        FL_RST_N;
-output        FL_WE_N;
-output        FL_CE_N;
-
-output  [17:0]  SRAM_ADDR;
-output        SRAM_CE_N;
-inout   [15:0]  SRAM_DQ;
-output        SRAM_LB_N;
-output        SRAM_OE_N;
-output        SRAM_UB_N;
-output        SRAM_WE_N;
 
 // Clocks, Reset switch, Flap switch
 wire           clk;
@@ -78,7 +84,7 @@ wire  [11:0]  rgb;
 // Internal RAM
 wire  [18:0]  ram_a;
 wire  [7:0]   ram_di;
-reg   [7:0]   r_ram_do;
+reg   [15:0]  r_ram_do;
 wire          ram_ce_n;
 wire          ram_oe_n;
 wire          ram_we_n;
@@ -90,11 +96,12 @@ wire          rom_ce_n;
 wire          rom_oe_n;
 
 // Dual-port VRAM (write port for blink, read port for VGA)
-wire          vram_wp_we;
-wire  [13:0]  vram_wp_a;
-wire  [3:0]   vram_wp_di;
-wire  [13:0]  vram_rp_a;
-wire  [3:0]   vram_rp_do;
+wire          frame /* verilator public */;
+wire          vram_wp_we /* verilator public */;
+wire  [13:0]  vram_wp_a /* verilator public */;
+wire  [3:0]   vram_wp_di /* verilator public */;
+wire  [13:0]  vram_rp_a /* verilator public */;
+wire  [3:0]   vram_rp_do /* verilator public */;
 
 
 assign  reset_n = ~SW[0];
@@ -127,39 +134,53 @@ assign  FL_OE_N = rom_oe_n;
 assign  FL_CE_N = rom_ce_n;
 assign  FL_RST_N = 1'b1;
 assign  FL_WE_N = 1'b1;
+`ifdef verilator3
+always@(posedge CLOCK_50) r_rom_do <= FL_D[7:0];
+assign  FL_Q = 8'h00;
+`else
 always@(posedge CLOCK_50) r_rom_do <= FL_DQ[7:0];
 assign  FL_DQ = 8'bZZZZZZZZ;
+`endif
 
 // 256K*16b SRAM to 512KB SRAM
-assign  SRAM_ADDR[17:0] = ram_a[17:0];
-assign  SRAM_UB_N = 1'b1;
-assign  SRAM_LB_N = 1'b0;
+assign  SRAM_ADDR[17:0] = ram_a[18:1];
+assign  SRAM_UB_N = ~ram_a[0];
+assign  SRAM_LB_N =  ram_a[0];
 assign  SRAM_CE_N = ram_ce_n;
 assign  SRAM_OE_N = ram_oe_n;
 assign  SRAM_WE_N = ram_we_n;
-always@(posedge CLOCK_50) r_ram_do <= SRAM_DQ[7:0];
+`ifdef verilator3
+always@(posedge CLOCK_50) r_ram_do <= SRAM_D[15:0];
+assign  SRAM_Q = (!ram_we_n) ? { ram_di, ram_di } : 16'h0000;
+`else
+always@(posedge CLOCK_50) r_ram_do <= SRAM_DQ[15:0];
 assign  SRAM_DQ = (!ram_we_n) ? { ram_di, ram_di } : 16'bZZZZZZZZ_ZZZZZZZZ;
+`endif
 
+reg       r_25m_ena;
 reg [6:0] r_rst_n;
 reg       rst;
 
 always@(posedge CLOCK_50) begin : RESET
     r_rst_n <= { r_rst_n[5:0], reset_n };
     rst <= (r_rst_n[6:2] == 5'b00000) ? 1'b1 : 1'b0;
+    r_25m_ena <= (rst) ? 1'b0 : ~r_25m_ena;
 end
 
 // Clocks
+/*
 z88_de1_pll pll (
   .inclk0(CLOCK_50),
   .c0(clk25),           // VGA clock
   .c1(clk)              // master clock
 );
+*/
 
 // 8KB VRAM
 vram video (
   .data(vram_wp_di),
   .rdaddress(vram_rp_a),
-  .rdclock(clk25),
+  .rdclock(CLOCK_50),
   .wraddress(vram_wp_a),
   .wrclock(CLOCK_50),
   .wren(vram_wp_we),
@@ -185,12 +206,12 @@ z88 z88de1 (
 
   .kbmatrix(kbmatrix),
 
-  .frame(),
+  .frame(frame),
   .t_1s(t_1s),
 
   .clk(CLOCK_50),
   .reset_n(~rst),
-  .ram_do(r_ram_do),
+  .ram_do((ram_a[0]) ? r_ram_do[15:8] : r_ram_do[7:0]),
   .rom_do(r_rom_do),
   .flap(flap),
 
@@ -204,7 +225,8 @@ z88 z88de1 (
 
 // VGA controller
 vga thevga (
-  .vclk(clk25),            // 25.175MHz clock
+  .vclk(CLOCK_50),            // 25.175MHz clock
+  .vclk_ena(r_25m_ena),
   .reset_n(~rst),
   .lcdon(lcdon),
   .vram_a(vram_rp_a),

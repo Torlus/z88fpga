@@ -7,7 +7,7 @@ COMPILE_OPT="-cc -O3 -CFLAGS -Wno-attributes"
 TRACE_OPT="-trace"
 
 #Verilog top module
-TOP_FILE=z88
+TOP_FILE=z88_de1
 
 #C++ support files
 CPP_FILES=\

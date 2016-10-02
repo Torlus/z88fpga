@@ -7,7 +7,13 @@
 #include "verilated.h"
 #include "svdpi.h"
 
-#include "Vz88.h"
+#include "Vz88_de1.h"
+#include "Vz88_de1_z88_de1.h"
+#include "Vz88_de1_z88.h"
+#include "Vz88_de1_blink.h"
+#include "Vz88_de1_tv80s.h"
+#include "Vz88_de1_tv80_reg.h"
+#include "Vz88_de1_tv80_core__M0.h"
 
 #include <ctime>
 
@@ -16,12 +22,12 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)( (491520 * 384) + 10 ))
-// Half period (in ps) of a 9.8304 MHz clock
-#define STEP_PS      ((vluint64_t)5086)
+#define NUM_STEPS    ((vluint64_t)100000000)
+// Half period (in ps) of a 50 MHz clock
+#define STEP_PS      ((vluint64_t)10000)
 
 #define ROM_SIZE      (1<<19)
-#define RAM_SIZE      (1<<19)
+#define RAM_SIZE      (1<<18)
 #define VRAM_SIZE     (1<<14)
 
 #define TIME_SPLIT    ((vluint64_t)1000000000)
@@ -32,10 +38,11 @@ vluint64_t tb_time;
 vluint64_t tb_time_split;
 
 
-Vz88* top;
+Vz88_de1* top;
 vluint8_t ROM[ROM_SIZE];
 size_t rom_size;
-vluint8_t RAM[RAM_SIZE];
+vluint8_t RAM_U[RAM_SIZE];
+vluint8_t RAM_L[RAM_SIZE];
 vluint8_t VRAM[VRAM_SIZE];
 
 // Disassembly
@@ -62,13 +69,20 @@ Z80EX_BYTE disas_readbyte_top(Z80EX_WORD addr, Z80EX_BYTE unused) {
   if (disas_rom)
     return ROM[addr & (rom_size - 1)];
   if (disas_ram)
-    return RAM[addr & (RAM_SIZE - 1)];
+  {
+      if (addr & 1)
+          return RAM_U[(addr >> 1) & (RAM_SIZE - 1)];
+      else
+          return RAM_L[(addr >> 1) & (RAM_SIZE - 1)];
+  }
   fprintf(logger, "PC: Unexpected location %04X\n", addr);
   return 0xFF;
 }
 
 int main(int argc, char **argv, char **env)
 {
+    vluint16_t ram_dly;
+    vluint8_t  rom_dly[7];
     // Trace index
     int trc_idx = 0;
     // File name generation
@@ -86,7 +100,7 @@ int main(int argc, char **argv, char **env)
 
     Verilated::commandArgs(argc, argv);
     // Init top verilog instance
-    top = new Vz88;
+    top = new Vz88_de1;
 
 #if VM_TRACE
     // Init VCD trace dump
@@ -99,13 +113,14 @@ int main(int argc, char **argv, char **env)
 #endif
 
     // Initialize simulation inputs
-    top->reset_n = 0;
-    top->clk = 1;
+    top->SW = 3;
+    top->CLOCK_50 = 1;
 
-    top->ram_do = 0;
-    top->rom_do = 0;
+    top->SRAM_D  = 0;
+    top->FL_D    = 0;
 
-    top->kbmatrix = (vluint64_t)0;
+    top->PS2_CLK = 0;
+    top->PS2_DAT = 0;
 
     tb_sstep = 0;  // Simulation steps (64 bits)
     tb_time = 0;  // Simulation time in ps (64 bits)
@@ -168,35 +183,45 @@ int main(int argc, char **argv, char **env)
     // Run simulation for NUM_CYCLES clock periods
     while (tb_sstep < NUM_STEPS)
     {
-        // Reset ON during 12 cycles
-        top->reset_n = (tb_sstep < (vluint64_t)24) ? 0 : 1;
+        // Reset ON during 15 cycles
+        top->SW = (tb_sstep < (vluint64_t)30) ? 3 : 0;
         // Toggle clock
-        top->clk = top->clk ^ 1;
+        top->CLOCK_50 = top->CLOCK_50 ^ 1;
 
         // Simulate ROM behaviour
-        if (!top->rom_oe_n && !top->rom_ce_n) {
+        top->FL_D = rom_dly[6]; // 70ns latency
+        rom_dly[6] = rom_dly[5];
+        rom_dly[5] = rom_dly[4];
+        rom_dly[4] = rom_dly[3];
+        rom_dly[3] = rom_dly[2];
+        rom_dly[2] = rom_dly[1];
+        rom_dly[1] = rom_dly[0];
+        if (!top->FL_OE_N && !top->FL_CE_N) {
           disas_rom = true; disas_ram = false;
-          top->rom_do = ROM[top->rom_a & (ROM_SIZE-1)];
+          rom_dly[0] = ROM[top->FL_ADDR & (ROM_SIZE-1)];
         } else {
-          top->rom_do = 0xFF;
+          rom_dly[0] = 0xFF;
         }
 
         // Simulate RAM behaviour
-        if (!top->ram_oe_n && !top->ram_ce_n) {
+        top->SRAM_D = ram_dly; // 10ns latency
+        if (!top->SRAM_OE_N && !top->SRAM_CE_N) {
           disas_rom = false; disas_ram = true;
-          top->ram_do = RAM[top->ram_a & (RAM_SIZE-1)];
+          ram_dly =  (vluint16_t)RAM_L[top->SRAM_ADDR & (RAM_SIZE-1)]
+                      | ((vluint16_t)RAM_U[top->SRAM_ADDR & (RAM_SIZE-1)] << 8);
         } else {
-          top->ram_do = 0xFF;
+          ram_dly = 0xFFFF;
         }
-        if (!top->ram_we_n && !top->ram_ce_n) {
-          RAM[top->ram_a & (RAM_SIZE-1)] = top->ram_di;
+        if (!top->SRAM_WE_N && !top->SRAM_CE_N) {
+          if (!top->SRAM_LB_N) RAM_L[top->SRAM_ADDR & (RAM_SIZE-1)] = (vluint8_t)top->SRAM_Q;
+          if (!top->SRAM_UB_N) RAM_U[top->SRAM_ADDR & (RAM_SIZE-1)] = (vluint8_t)(top->SRAM_Q >> 8);
         }
 
         // Simulate VRAM behaviour
-        if (top->clk) {
+        if (top->CLOCK_50) {
           //top->vram_rp_do = VRAM[top->vram_rp_a & (VRAM_SIZE-1)] & 0x0f;
-          if (top->vram_wp_we) {
-            VRAM[top->vram_wp_a & (VRAM_SIZE-1)] = (top->vram_wp_di & 0x0f);
+          if (top->v->vram_wp_we) {
+            VRAM[top->v->vram_wp_a & (VRAM_SIZE-1)] = (top->v->vram_wp_di & 0x0f);
           }
         }
 
@@ -204,7 +229,9 @@ int main(int argc, char **argv, char **env)
         top->eval();
 
         // Disassembly
-        if (!top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && m1_prev) {
+        if (!top->v->z88de1->z88_m1_n &&
+            !top->v->z88de1->z88_mreq_n &&
+             top->v->z88de1->z88_pm1 && m1_prev) {
           if (first) {
             if (opcn == 1 && (opc[0] == 0xCB || opc[0] == 0xED || opc[0] == 0xDD || opc[0] == 0xFD)){
               first = false;
@@ -226,23 +253,23 @@ int main(int argc, char **argv, char **env)
             }
           }
           first = true;
-          opc[opcn] = top->v__DOT__w_z80_cdi;
+          opc[opcn] = top->v->z88de1->w_z80_cdi;
           ++opcn;
-          regPC = top->v__DOT__z80__DOT__i_tv80_core__DOT__PC;
-          regSP = top->v__DOT__z80__DOT__i_tv80_core__DOT__SP;
-          regA = top->v__DOT__z80__DOT__i_tv80_core__DOT__ACC;
-          regF = top->v__DOT__z80__DOT__i_tv80_core__DOT__F;
-          regB = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__B;
-          regC = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__C;
-          regD = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__D;
-          regE = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__E;
-          regH = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__H;
-          regL = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__L;
-          regIX = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IX;
-          regIY = top->v__DOT__z80__DOT__i_tv80_core__DOT__i_reg__DOT__IY;
+          regPC = top->v->z88de1->z80->i_tv80_core->PC;
+          regSP = top->v->z88de1->z80->i_tv80_core->SP;
+          regA = top->v->z88de1->z80->i_tv80_core->ACC;
+          regF = top->v->z88de1->z80->i_tv80_core->F;
+          regB = top->v->z88de1->z80->i_tv80_core->i_reg->B;
+          regC = top->v->z88de1->z80->i_tv80_core->i_reg->C;
+          regD = top->v->z88de1->z80->i_tv80_core->i_reg->D;
+          regE = top->v->z88de1->z80->i_tv80_core->i_reg->E;
+          regH = top->v->z88de1->z80->i_tv80_core->i_reg->H;
+          regL = top->v->z88de1->z80->i_tv80_core->i_reg->L;
+          regIX = top->v->z88de1->z80->i_tv80_core->i_reg->IX;
+          regIY = top->v->z88de1->z80->i_tv80_core->i_reg->IY;
           seg0 = (regPC>>13 & 0x07);
           seg = (regPC>>14 & 0x03);
-          com = top->v__DOT__theblink__DOT__com;
+          com = top->v->z88de1->theblink->com;
           // vluint8_t bnk;
             if (!seg0) {
               if (com & 0x04) {bnk = 0x20;}
@@ -250,24 +277,30 @@ int main(int argc, char **argv, char **env)
             }
             else{
               switch(seg){
-                case 0x00:{bnk = top->v__DOT__theblink__DOT__sr0;
+                case 0x00:{bnk = top->v->z88de1->theblink->sr0;
                 break;}
-                case 0x01:{bnk = top->v__DOT__theblink__DOT__sr1;
+                case 0x01:{bnk = top->v->z88de1->theblink->sr1;
                 break;}
-                case 0x02:{bnk = top->v__DOT__theblink__DOT__sr2;
+                case 0x02:{bnk = top->v->z88de1->theblink->sr2;
                 break;}
-                case 0x03:{bnk = top->v__DOT__theblink__DOT__sr3;
+                case 0x03:{bnk = top->v->z88de1->theblink->sr3;
                 break;}
               }
             }
         }
-        m1_prev = !top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
+        m1_prev = !top->v->z88de1->z88_m1_n &&
+                  !top->v->z88de1->z88_mreq_n &&
+                   top->v->z88de1->z88_pm1;
 
-        if (top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1 && mreq_prev) {
-          opc[opcn] = top->v__DOT__w_z80_cdi;
+        if (top->v->z88de1->z88_m1_n &&
+           !top->v->z88de1->z88_mreq_n &&
+            top->v->z88de1->z88_pm1 && mreq_prev) {
+          opc[opcn] = top->v->z88de1->w_z80_cdi;
           ++opcn;
         }
-        mreq_prev = top->v__DOT__z88_m1_n && !top->v__DOT__z88_mreq_n && top->v__DOT__z88_pm1;
+        mreq_prev = top->v->z88de1->z88_m1_n &&
+                   !top->v->z88de1->z88_mreq_n &&
+                    top->v->z88de1->z88_pm1;
 
 
 
@@ -287,7 +320,7 @@ int main(int argc, char **argv, char **env)
         }
 #endif
 
-        if (top->clk && top->frame) {
+        if (top->CLOCK_50 && top->v->frame) {
           int addr = 0;
           for(int y = 0; y < 64; y++) {
             addr = y * (1024 >> 2);

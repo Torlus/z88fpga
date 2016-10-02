@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 module screen(
 // Inputs:
-clk, clk_ena, rin_n, lcdon, clk_ph,
+clk, clk_ena, rin_n, lcdon, clk_ph, clk_ph_adv,
 cdi,
 pb0, pb1, pb2, pb3, sbr,
 t_1s, t_5ms,
@@ -23,6 +23,7 @@ input           clk_ena;
 input           rin_n;
 input           lcdon;
 input   [2:0]   clk_ph;
+input   [2:0]   clk_ph_adv;
 input           t_1s;
 input           t_5ms;
 
@@ -71,7 +72,7 @@ assign o_frame = frame;
 
 // Video address
 assign va = (!sbar) ?
-{sbr[10:0], slin[5:3], scol[6:0], clk_ph[1]} : // read SBA LSB then MSB
+{sbr[10:0], slin[5:3], scol[6:0], clk_ph_adv[1]} : // read SBA LSB then MSB
 (!hrs) ?
   (sba[8:6] == 3'b111) ? {pb0[12:0], sba[5:0], slin[2:0]} // HRS=0; Lores0 (ROM)
   : {pb1[9:0], sba[8:0], slin[2:0]}                       // Lores1 (RAM)

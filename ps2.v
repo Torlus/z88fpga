@@ -34,7 +34,8 @@ wire  rlskey;
 //assign ps2clk = PS2_CLK;
 //assign ps2dat = PS2_DAT;
 
-reg     [1:0]   ps2clkbuf;
+reg     [2:0]   ps2clkbuf;
+reg     [2:0]   ps2datbuf;
 reg     [10:0]  ps2bits;
 reg     [7:0]   ps2key0;
 reg     [7:0]   ps2key1;
@@ -46,13 +47,17 @@ reg     [3:0]   ps2cnt;
 always @(posedge clk)
 begin
   if (!reset_n) begin
-    ps2clkbuf <= 2'b0;
-    ps2cnt <= 4'd00;
-    ps2ok <= 1'b0;
-    ps2bits <= 10'd00;
-  end else begin
-    ps2clkbuf[1:0] <= {ps2clkbuf[0], ps2clk};   // shift left
-    if(ps2clkbuf == 2'b01) begin    // on positive edge
+    ps2clkbuf <= 3'b000;
+    ps2cnt    <= 4'd0;
+    ps2ok     <= 1'b0;
+    ps2bits   <= 11'b0;
+  end
+  else begin
+    // Clock domain crossing
+    ps2clkbuf[2:0] <= {ps2clkbuf[1:0], ps2clk};
+    ps2datbuf[2:0] <= {ps2datbuf[1:0], ps2dat};
+    // Rising edge on PS2CLK
+    if(ps2clkbuf[2:1] == 2'b01) begin
       ps2cnt <= ps2cnt + 4'd01;
       if(ps2cnt == 4'd10) begin
         ps2cnt <= 4'd00;
@@ -70,7 +75,7 @@ begin
       end else begin
         ps2ok <= 1'b0;
       end
-      ps2bits <= {ps2bits[9:0], ps2dat};	// data shift left
+      ps2bits <= {ps2bits[9:0], ps2datbuf[1]};	// data shift left
     end
   end
 end
