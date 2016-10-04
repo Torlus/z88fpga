@@ -11,7 +11,7 @@ module blink
     output  [2:0] clk_ph_adv,
     // Standby
     output        pm1s,
-    
+
     // Z80 bus
     input         z80_hlt_n,    // HALT Coma/Standby command
     input         z80_crd_n,    // RD from Z80
@@ -23,7 +23,7 @@ module blink
     output  [7:0] z80_rdata,    // Z80 data bus (read)
     output        z80_nmi_n,    // NMI
     output        z80_int_n,    // INT
-    
+
     // LCD control
     input  [21:0] lcd_addr,
     output        lcd_on,
@@ -32,7 +32,7 @@ module blink
     output  [8:0] lcd_pb2,
     output [10:0] lcd_pb3,
     output [10:0] lcd_sbr,
-    
+
     // External bus
     output        ext_oe_n,     // RAM/ROM output enable
     output        ext_we_n,     // Write enable
@@ -40,17 +40,17 @@ module blink
     output        rom_cs_n,     // Slot 0 ROM access
     output  [3:1] ext_cs_n,     // Slots 1-3 access
     output [21:0] ext_addr,     // Physical memory (22 bits address bus)
-    
+
     // Keyboard
     input  [63:0] kbmat,
     output  [7:0] kbdval,
     output        kbds,
     output        key,
-    
+
     // Clocks
     output        t_1s,     // 1s for cursor, flash effect
     output        t_5ms,    // 5ms for grey effect
-    
+
     // Flap
     input         flp       // Flap switch (high if opened for card insertion or hard reset)
 );
@@ -159,12 +159,12 @@ always @(posedge rst or posedge clk) begin : Z80_MMU
         r_za <= 22'd0;
     end
     else if (clk_ena[4]) begin
-    
+
         if (r_clk_ph[0]) begin
             casez (z80_addr[15:13])
                 // 0000-1FFF : Bank $00 !RAMS, Bank $20 RAMS
                 3'b000 : r_za <= { 2'b00, com[2], 6'b0, z80_addr[12:0] };
-                // 2000-3FFF
+                // 2000-3FFF : Only even banks, sr[0] select lower/upper part
                 3'b001 : r_za <= { sr0[7:1], 1'b0, sr0[0], z80_addr[12:0] };
                 // 4000-7FFF
                 3'b01? : r_za <= { sr1[7:0], z80_addr[13:0] };
@@ -349,8 +349,12 @@ slatch3 tsta2 (
   .ack0(tsta_set_ack[2]), .ack1(tsta_clr_ack[2]), .ack2()
 );
 
-// RTC counters and interrupts
-always @(posedge clk) begin
+// RTC counters and timer interrupts
+always @(posedge clk) begin : TIMER
+  reg v_tick;
+  reg v_tim0;
+  reg v_tim1;
+
   if ((rst & flp) || com[4]) begin
     // Timer is reset on hard reset or when RESTIM
     tck <= 16'd0;
@@ -358,28 +362,37 @@ always @(posedge clk) begin
     tim1 <= 6'd0;
     timm <= 21'd0;
     tsta_set_req <= 3'd0;
+    v_tick <= 1'b0;
+    v_tim0 <= 1'b0;
+    v_tim1 <= 1'b0;
   end
   else if (clk_ena[4]) begin
     tsta_set_req <= 3'd0;
-    if (tck == 16'd49152) begin
+    if (v_tick) begin
       tck <= 16'd0;
       tsta_set_req[0] <= 1'b1;
-      if (tim0 == 8'd199) begin
+      if (v_tim0) begin
         tim0 <= 8'd0;
         tsta_set_req[1] <= 1'b1;
-        if (tim1 == 6'd59) begin
+        if (v_tim1) begin
           tim1 <= 6'd0;
           tsta_set_req[2] <= 1'b1;
           timm <= timm + 21'd1;
-        end else begin
+        end
+        else begin
           tim1 <= tim1 + 6'd1;
         end
-      end else begin
+      end
+      else begin
         tim0 <= tim0 + 8'd1;
       end
-    end else begin
+    end
+    else begin
       tck <= tck + 16'd1;
     end
+    v_tick <= (tck == 16'd49151) ? 1'b1 : 1'b0;
+    v_tim0 <= (tim0 == 8'd199) ? 1'b1 : 1'b0;
+    v_tim1 <= (tim1 == 6'd59) ? 1'b1 : 1'b0;
   end
 end
 
