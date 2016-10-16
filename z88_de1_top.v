@@ -91,6 +91,7 @@ module z88_de1_top
     wire [18:0] w_rom_addr;
     wire [15:0] w_rom_rdata;
     
+    wire        w_vga_fr_tgl;
     wire        w_vga_hs;
     wire        w_vga_vs;
     wire        w_vga_de;
@@ -103,33 +104,34 @@ module z88_de1_top
     )
     the_z88
     (
-        .rst       (r_rst),
-        .clk       (CLOCK_50),
-        .clk_ena   (w_clk_ena),
-        .bus_ph    (w_bus_ph),
-        .flap_sw   (r_flap),
+        .rst        (r_rst),
+        .clk        (CLOCK_50),
+        .clk_ena    (w_clk_ena),
+        .bus_ph     (w_bus_ph),
+        .flap_sw    (r_flap),
         
-        .kb_matrix (r_kb_matrix_p2),
-        .kbd_val   (w_kbd_val),
+        .kb_matrix  (r_kb_matrix_p2),
+        .kbd_val    (w_kbd_val),
         
-        .ram_ce_n  (w_ram_ce_n),
-        .ram_oe_n  (w_ram_oe_n),
-        .ram_we_n  (w_ram_we_n),
-        .ram_be_n  (w_ram_be_n),
-        .ram_addr  (w_ram_addr),
-        .ram_wdata (w_ram_wdata),
-        .ram_rdata (w_ram_rdata),
+        .ram_ce_n   (w_ram_ce_n),
+        .ram_oe_n   (w_ram_oe_n),
+        .ram_we_n   (w_ram_we_n),
+        .ram_be_n   (w_ram_be_n),
+        .ram_addr   (w_ram_addr),
+        .ram_wdata  (w_ram_wdata),
+        .ram_rdata  (w_ram_rdata),
         
-        .rom_ce_n  (w_rom_ce_n),
-        .rom_oe_n  (w_rom_oe_n),
-        .rom_be_n  (w_rom_be_n),
-        .rom_addr  (w_rom_addr),
-        .rom_rdata (w_rom_rdata),
+        .rom_ce_n   (w_rom_ce_n),
+        .rom_oe_n   (w_rom_oe_n),
+        .rom_be_n   (w_rom_be_n),
+        .rom_addr   (w_rom_addr),
+        .rom_rdata  (w_rom_rdata),
         
-        .vga_hs    (w_vga_hs),
-        .vga_vs    (w_vga_vs),
-        .vga_de    (w_vga_de),
-        .vga_rgb   (w_vga_rgb)
+        .vga_fr_tgl (w_vga_fr_tgl),
+        .vga_hs     (w_vga_hs),
+        .vga_vs     (w_vga_vs),
+        .vga_de     (w_vga_de),
+        .vga_rgb    (w_vga_rgb)
     );
     
     // 512 KB SRAM :
@@ -239,11 +241,31 @@ module z88_de1_top
     reg  [63:0] r_kb_matrix_p2;
     
     always@(posedge r_rst or posedge CLOCK_50) begin : KB_MATRIX_P2
+        `ifdef verilator3
+        integer v_fr_num;
+        reg     v_fr_tgl;
+        `endif
     
         if (r_rst) begin
+            `ifdef verilator3
+            v_fr_num  = 0;
+            v_fr_tgl <= 1'b0;
+            `endif
             r_kb_matrix_p2 <= 64'b0;
         end
         else begin
+            `ifdef verilator3
+            if (v_fr_tgl != w_vga_fr_tgl) begin
+                if (v_fr_num == 32'd150) r_kb_matrix_p2[22] <= 1'b1; // Down
+                if (v_fr_num == 32'd151) r_kb_matrix_p2[22] <= 1'b0;
+                if (v_fr_num == 32'd160) r_kb_matrix_p2[22] <= 1'b1; // Down
+                if (v_fr_num == 32'd161) r_kb_matrix_p2[22] <= 1'b0;
+                if (v_fr_num == 32'd170) r_kb_matrix_p2[ 6] <= 1'b1; // Enter
+                if (v_fr_num == 32'd171) r_kb_matrix_p2[ 6] <= 1'b0;
+                v_fr_num = v_fr_num + 1;
+            end
+            v_fr_tgl <= w_vga_fr_tgl;
+            `else
             if (r_kb_vld_p1) begin
                 case (r_kb_data_p1[7:0])
                     //  A8 column
@@ -323,6 +345,7 @@ module z88_de1_top
                     default: ;                    
                 endcase
             end
+            `endif
         end
     end
     

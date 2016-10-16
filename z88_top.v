@@ -28,6 +28,7 @@ module z88_top
     input   [15:0] rom_rdata,
     
     // VGA output
+    output         vga_fr_tgl, // For debug
     output         vga_hs,
     output         vga_vs,
     output         vga_de,
@@ -264,6 +265,8 @@ module z88_top
         .dena       (vga_de),
         .rgb        (vga_rgb)
     );
+    
+    assign vga_fr_tgl = w_vga_fr_tgl;
     
     // ========================================================================
     // External memory bus
