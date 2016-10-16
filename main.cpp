@@ -1,19 +1,19 @@
 #define DPI_DLLISPEC
 #define DPI_DLLESPEC
 
-#include "EasyBMP.h"
-#include "z80ex_dasm.h"
-
 #include "verilated.h"
 #include "svdpi.h"
 
-#include "Vz88_de1.h"
-#include "Vz88_de1_z88_de1.h"
-#include "Vz88_de1_z88.h"
-#include "Vz88_de1_blink.h"
-#include "Vz88_de1_tv80s.h"
-#include "Vz88_de1_tv80_reg.h"
-#include "Vz88_de1_tv80_core__M0.h"
+#include "EasyBMP.h"
+#include "z80ex_dasm.h"
+
+#include "Vz88_de1_top.h"
+#include "Vz88_de1_top_z88_de1_top.h"
+#include "Vz88_de1_top_z88_top.h"
+#include "Vz88_de1_top_z88_blink.h"
+#include "Vz88_de1_top_tv80s.h"
+#include "Vz88_de1_top_tv80_reg.h"
+#include "Vz88_de1_top_tv80_core__M0.h"
 
 #include <ctime>
 
@@ -22,23 +22,22 @@
 #endif
 
 // Number of simulation steps
-#define NUM_STEPS    ((vluint64_t)100000000)
+#define NUM_STEPS    ((vluint64_t)1000000000)
 // Half period (in ps) of a 50 MHz clock
 #define STEP_PS      ((vluint64_t)10000)
 
 #define ROM_SIZE      (1<<19)
 #define RAM_SIZE      (1<<18)
-#define VRAM_SIZE     (1<<14)
+#define VRAM_SIZE     (1<<15)
 
-#define TIME_SPLIT    ((vluint64_t)1000000000)
+#define TIME_SPLIT    ((vluint64_t)16800000000)
 
 // Simulation steps (global)
 vluint64_t tb_sstep;
 vluint64_t tb_time;
-vluint64_t tb_time_split;
 
 
-Vz88_de1* top;
+Vz88_de1_top* top;
 vluint8_t ROM[ROM_SIZE];
 size_t rom_size;
 vluint8_t RAM_U[RAM_SIZE];
@@ -81,15 +80,21 @@ Z80EX_BYTE disas_readbyte_top(Z80EX_WORD addr, Z80EX_BYTE unused) {
 
 int main(int argc, char **argv, char **env)
 {
+    vluint16_t fr_tgl;
     vluint16_t ram_dly;
     vluint8_t  rom_dly[7];
-    // Trace index
+    // Trace indexes
+    int log_idx = 0;
     int trc_idx = 0;
+    int min_idx = 0;
     // File name generation
     char file_name[256];
     // Simulation duration
     time_t beg, end;
     double secs;
+    // Testbench configuration
+    const char *arg;
+    vluint64_t max_step = (vluint64_t)1000000000000L / STEP_PS; // Default : 1 second
     // BMP
     BMP *bmp = new BMP;
     int bmp_idx = 0;
@@ -99,8 +104,45 @@ int main(int argc, char **argv, char **env)
     beg = time(0);
 
     Verilated::commandArgs(argc, argv);
+    
+    // Simulation duration : +usec=<num>
+    arg = Verilated::commandArgsPlusMatch("usec=");
+    if ((arg) && (arg[0]))
+    {
+        arg += 6;
+        max_step = (vluint64_t)atoi(arg) * (vluint64_t)1000000L / STEP_PS;
+    }
+    
+    // Simulation duration : +msec=<num>
+    arg = Verilated::commandArgsPlusMatch("msec=");
+    if ((arg) && (arg[0]))
+    {
+        arg += 6;
+        max_step = (vluint64_t)atoi(arg) * (vluint64_t)1000000000L / STEP_PS;
+    }
+    
+    // Simulation duration : +sec=<num>
+    arg = Verilated::commandArgsPlusMatch("sec=");
+    if ((arg) && (arg[0]))
+    {
+        arg += 5;
+        max_step = (vluint64_t)atoi(arg) * (vluint64_t)1000000000000L / STEP_PS;
+    }
+    
+    // Trace start index : +tidx=<num>
+    arg = Verilated::commandArgsPlusMatch("tidx=");
+    if ((arg) && (arg[0]))
+    {
+        arg += 6;
+        min_idx = atoi(arg);
+    }
+    else
+    {
+        min_idx = 0;
+    }
+
     // Init top verilog instance
-    top = new Vz88_de1;
+    top = new Vz88_de1_top;
 
 #if VM_TRACE
     // Init VCD trace dump
@@ -108,12 +150,17 @@ int main(int argc, char **argv, char **env)
     VerilatedVcdC* tfp = new VerilatedVcdC;
     top->trace (tfp, 99);
     tfp->spTrace()->set_time_resolution ("1 ps");
-    sprintf(file_name, "z88_%04d.vcd", trc_idx++);
-    tfp->open (file_name);
-#endif
+    if (trc_idx == min_idx)
+    {
+        sprintf(file_name, "z88_%04d.vcd", trc_idx);
+        printf("Opening VCD file \"%s\"\n", file_name);
+        tfp->open (file_name);
+    }
+#endif /* VM_TRACE */
 
     // Initialize simulation inputs
-    top->SW = 3;
+    top->SW       = 0;
+    top->KEY      = 0;
     top->CLOCK_50 = 1;
 
     top->SRAM_D  = 0;
@@ -122,9 +169,9 @@ int main(int argc, char **argv, char **env)
     top->PS2_CLK = 0;
     top->PS2_DAT = 0;
 
-    tb_sstep = 0;  // Simulation steps (64 bits)
-    tb_time = 0;  // Simulation time in ps (64 bits)
-    tb_time_split = 0;
+    tb_sstep      = 0;  // Simulation steps (64 bits)
+    tb_time       = 0;  // Simulation time in ps (64 bits)
+    fr_tgl        = 0;
 
     // Load the ROM file
     //FILE *rom = fopen("Z88UK400.rom","rb");
@@ -145,7 +192,12 @@ int main(int argc, char **argv, char **env)
     }
 
     // For disassembly
-    logger = fopen("z88_dasm.log", "wb");
+    if (log_idx == min_idx)
+    {
+        sprintf(file_name, "z88_dasm_%04d.log", log_idx);
+        printf("Opening DASM file \"%s\"\n", file_name);
+        logger = fopen(file_name, "wb");
+    }
     bool m1_prev = true;
     bool mreq_prev = true;
     bool first = false;
@@ -181,10 +233,10 @@ int main(int argc, char **argv, char **env)
     (byte & 0x01 ? "C" : ".")
 
     // Run simulation for NUM_CYCLES clock periods
-    while (tb_sstep < NUM_STEPS)
+    while (tb_sstep < max_step)
     {
         // Reset ON during 15 cycles
-        top->SW = (tb_sstep < (vluint64_t)30) ? 3 : 0;
+        top->KEY      = (tb_sstep < (vluint64_t)30) ? 0 : 3;
         // Toggle clock
         top->CLOCK_50 = top->CLOCK_50 ^ 1;
 
@@ -196,148 +248,251 @@ int main(int argc, char **argv, char **env)
         rom_dly[3] = rom_dly[2];
         rom_dly[2] = rom_dly[1];
         rom_dly[1] = rom_dly[0];
-        if (!top->FL_OE_N && !top->FL_CE_N) {
-          disas_rom = true; disas_ram = false;
-          rom_dly[0] = ROM[top->FL_ADDR & (ROM_SIZE-1)];
-        } else {
-          rom_dly[0] = 0xFF;
+        
+        // Read only
+        if (!top->FL_OE_N && !top->FL_CE_N)
+        {
+            disas_rom  = true;
+            disas_ram  = false;
+            rom_dly[0] = ROM[top->FL_ADDR & (ROM_SIZE-1)];
         }
+        else
+        {
+            rom_dly[0] = 0xFF;
+        }
+        //top->FL_D = rom_dly[0]; // Debug : no latency
 
         // Simulate RAM behaviour
         top->SRAM_D = ram_dly; // 10ns latency
-        if (!top->SRAM_OE_N && !top->SRAM_CE_N) {
-          disas_rom = false; disas_ram = true;
-          ram_dly =  (vluint16_t)RAM_L[top->SRAM_ADDR & (RAM_SIZE-1)]
+        
+        // Read
+        if (!top->SRAM_OE_N && !top->SRAM_CE_N)
+        {
+            disas_rom = false;
+            disas_ram = true;
+            ram_dly   =  (vluint16_t)RAM_L[top->SRAM_ADDR & (RAM_SIZE-1)]
                       | ((vluint16_t)RAM_U[top->SRAM_ADDR & (RAM_SIZE-1)] << 8);
-        } else {
-          ram_dly = 0xFFFF;
         }
-        if (!top->SRAM_WE_N && !top->SRAM_CE_N) {
-          if (!top->SRAM_LB_N) RAM_L[top->SRAM_ADDR & (RAM_SIZE-1)] = (vluint8_t)top->SRAM_Q;
-          if (!top->SRAM_UB_N) RAM_U[top->SRAM_ADDR & (RAM_SIZE-1)] = (vluint8_t)(top->SRAM_Q >> 8);
+        else
+        {
+            ram_dly = 0xFFFF;
+        }
+        //top->SRAM_D = ram_dly; // Debug : no latency
+        
+        // Write
+        if (!top->SRAM_WE_N && !top->SRAM_CE_N)
+        {
+            if (!top->SRAM_LB_N)
+                RAM_L[top->SRAM_ADDR & (RAM_SIZE-1)] = (vluint8_t)(top->SRAM_Q & 0xFF);
+            if (!top->SRAM_UB_N)
+                RAM_U[top->SRAM_ADDR & (RAM_SIZE-1)] = (vluint8_t)(top->SRAM_Q >> 8);
         }
 
         // Simulate VRAM behaviour
-        if (top->CLOCK_50) {
-          //top->vram_rp_do = VRAM[top->vram_rp_a & (VRAM_SIZE-1)] & 0x0f;
-          if (top->v->vram_wp_we) {
-            VRAM[top->v->vram_wp_a & (VRAM_SIZE-1)] = (top->v->vram_wp_di & 0x0f);
-          }
+        if (top->CLOCK_50)
+        {
+            if (top->v->the_z88->w_lcd_vram_we)
+            {
+                VRAM[top->v->the_z88->w_lcd_vram_addr & (VRAM_SIZE-1)] =
+                    (top->v->the_z88->w_lcd_vram_data & 7);
+            }
         }
 
         // Evaluate verilated model
         top->eval();
 
         // Disassembly
-        if (!top->v->z88de1->z88_m1_n &&
-            !top->v->z88de1->z88_mreq_n &&
-             top->v->z88de1->z88_pm1 && m1_prev) {
-          if (first) {
-            if (opcn == 1 && (opc[0] == 0xCB || opc[0] == 0xED || opc[0] == 0xDD || opc[0] == 0xFD)){
-              first = false;
+        if (log_idx >= min_idx)
+        {
+            if (!top->v->the_z88->w_z80_m1_n &&
+                !top->v->the_z88->w_z80_mreq_n &&
+                 top->v->the_z88->w_z80_clk_ena &&
+                 top->v->the_z88->w_z80_halt_n &&
+                 m1_prev)
+            {
+                if (first)
+                {
+                    if (opcn == 1 && (opc[0] == 0xCB || opc[0] == 0xED || opc[0] == 0xDD || opc[0] == 0xFD))
+                    {
+                        first = false;
+                    }
+                    else
+                    {
+                        //fprintf(logger, "%6lu  ", opctime / 1000000);
+                        fprintf(logger, "%02X%04X  ", bnk, regPC);
+                        GrabBytes(regPC, opc[0], opc[1], opc[2], opc[3]);
+                        z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
+                        fprintf(logger, "%-16s  ", disas_out);
+                        //for (int i = 0; i <= opcn; ++i)
+                        //{
+                        //    fprintf(logger, "%02X ", opc[i]);
+                        //}
+                        //fprintf (logger, "\n", NULL);
+                        fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
+                                regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
+                        opcn = 0;
+                        opctime = tb_time;
+                    }
+                }
+                first = true;
+                opc[opcn++] = top->v->the_z88->r_z80_rdata;
+                regPC = top->v->the_z88->the_z80->i_tv80_core->PC;
+                regSP = top->v->the_z88->the_z80->i_tv80_core->SP;
+                regA  = top->v->the_z88->the_z80->i_tv80_core->ACC;
+                regF  = top->v->the_z88->the_z80->i_tv80_core->F;
+                regB  = top->v->the_z88->the_z80->i_tv80_core->i_reg->B;
+                regC  = top->v->the_z88->the_z80->i_tv80_core->i_reg->C;
+                regD  = top->v->the_z88->the_z80->i_tv80_core->i_reg->D;
+                regE  = top->v->the_z88->the_z80->i_tv80_core->i_reg->E;
+                regH  = top->v->the_z88->the_z80->i_tv80_core->i_reg->H;
+                regL  = top->v->the_z88->the_z80->i_tv80_core->i_reg->L;
+                regIX = top->v->the_z88->the_z80->i_tv80_core->i_reg->IX;
+                regIY = top->v->the_z88->the_z80->i_tv80_core->i_reg->IY;
+                seg0  = (regPC>>13 & 0x07);
+                seg   = (regPC>>14 & 0x03);
+                com   = top->v->the_z88->the_blink->r_COM;
+                
+                if (!seg0)
+                {
+                    if (com & 0x04)
+                    {
+                        bnk = 0x20;
+                    }
+                    else
+                    {
+                        bnk = 0X00;
+                    }
+                }
+                else
+                {
+                    switch (seg)
+                    {
+                        case 0: { bnk = top->v->the_z88->the_blink->r_SR0; break; }
+                        case 1: { bnk = top->v->the_z88->the_blink->r_SR1; break; }
+                        case 2: { bnk = top->v->the_z88->the_blink->r_SR2; break; }
+                        case 3: { bnk = top->v->the_z88->the_blink->r_SR3; break; }
+                    }
+                }
             }
-            else{
-              fprintf(logger, "%6lu  ", opctime / 1000000);
-              fprintf(logger, "%02X%04X  ", bnk, regPC);
-              GrabBytes(regPC, opc[0], opc[1], opc[2], opc[3]);
-              z80ex_dasm(disas_out, 256, 0, &t_states, &t_states2, disas_readbyte, regPC, bnk);
-              fprintf(logger, "%-16s  ", disas_out);
-              //for (int i = 0; i <= opcn; ++i){
-              //  fprintf(logger, "%02X ", opc[i]);
-              //}
-              //fprintf (logger, "\n", NULL);
-              fprintf(logger, "%02X  "BYTETOBINARYPATTERN"  %02X%02X %02X%02X %02X%02X  %04X %04X  %04X\n",
-               regA, BYTETOBINARY(regF), regB, regC, regD, regE, regH, regL, regIX, regIY, regSP);
-              opcn = 0;
-              opctime = tb_time;
-            }
-          }
-          first = true;
-          opc[opcn] = top->v->z88de1->w_z80_cdi;
-          ++opcn;
-          regPC = top->v->z88de1->z80->i_tv80_core->PC;
-          regSP = top->v->z88de1->z80->i_tv80_core->SP;
-          regA = top->v->z88de1->z80->i_tv80_core->ACC;
-          regF = top->v->z88de1->z80->i_tv80_core->F;
-          regB = top->v->z88de1->z80->i_tv80_core->i_reg->B;
-          regC = top->v->z88de1->z80->i_tv80_core->i_reg->C;
-          regD = top->v->z88de1->z80->i_tv80_core->i_reg->D;
-          regE = top->v->z88de1->z80->i_tv80_core->i_reg->E;
-          regH = top->v->z88de1->z80->i_tv80_core->i_reg->H;
-          regL = top->v->z88de1->z80->i_tv80_core->i_reg->L;
-          regIX = top->v->z88de1->z80->i_tv80_core->i_reg->IX;
-          regIY = top->v->z88de1->z80->i_tv80_core->i_reg->IY;
-          seg0 = (regPC>>13 & 0x07);
-          seg = (regPC>>14 & 0x03);
-          com = top->v->z88de1->theblink->com;
-          // vluint8_t bnk;
-            if (!seg0) {
-              if (com & 0x04) {bnk = 0x20;}
-              else {bnk = 0X00;}
-            }
-            else{
-              switch(seg){
-                case 0x00:{bnk = top->v->z88de1->theblink->sr0;
-                break;}
-                case 0x01:{bnk = top->v->z88de1->theblink->sr1;
-                break;}
-                case 0x02:{bnk = top->v->z88de1->theblink->sr2;
-                break;}
-                case 0x03:{bnk = top->v->z88de1->theblink->sr3;
-                break;}
-              }
+            if (top->v->the_z88->w_z80_m1_n &&
+               !top->v->the_z88->w_z80_mreq_n &&
+                top->v->the_z88->w_z80_clk_ena &&
+                top->v->the_z88->w_z80_halt_n &&
+                mreq_prev)
+            {
+                opc[opcn++] = top->v->the_z88->r_z80_rdata;
             }
         }
-        m1_prev = !top->v->z88de1->z88_m1_n &&
-                  !top->v->z88de1->z88_mreq_n &&
-                   top->v->z88de1->z88_pm1;
-
-        if (top->v->z88de1->z88_m1_n &&
-           !top->v->z88de1->z88_mreq_n &&
-            top->v->z88de1->z88_pm1 && mreq_prev) {
-          opc[opcn] = top->v->z88de1->w_z80_cdi;
-          ++opcn;
+        m1_prev  = !top->v->the_z88->w_z80_m1_n &&
+                   !top->v->the_z88->w_z80_mreq_n &&
+                    top->v->the_z88->w_z80_clk_ena;
+        
+        mreq_prev = top->v->the_z88->w_z80_m1_n &&
+                   !top->v->the_z88->w_z80_mreq_n &&
+                    top->v->the_z88->w_z80_clk_ena;
+                    
+        if (fr_tgl != top->v->the_z88->w_vga_fr_tgl)
+        {
+            // New log file
+            if (log_idx >= min_idx) fclose(logger);
+            log_idx++;
+            if (log_idx >= min_idx)
+            {
+                sprintf(file_name, "z88_dasm_%04d.log", log_idx);
+                printf("Opening DASM file \"%s\"\n", file_name);
+                logger = fopen(file_name, "wb");
+            }
         }
-        mreq_prev = top->v->z88de1->z88_m1_n &&
-                   !top->v->z88de1->z88_mreq_n &&
-                    top->v->z88de1->z88_pm1;
-
+            
 
 
 #if VM_TRACE
         // Dump signals into VCD file
         if (tfp)
         {
-            if ((TIME_SPLIT > 0) && (tb_time - tb_time_split >= TIME_SPLIT))
+            if (fr_tgl != top->v->the_z88->w_vga_fr_tgl)
             {
-                tb_time_split = tb_time;
                 // New VCD file
-                tfp->close();
-                sprintf(file_name, "z88_%04d.vcd", trc_idx++);
-                tfp->open(file_name);
+                if (trc_idx >= min_idx) tfp->close();
+                trc_idx++;
+                if (trc_idx >= min_idx)
+                {
+                    sprintf(file_name, "z88_%04d.vcd", trc_idx);
+                    printf("Opening VCD file \"%s\"\n", file_name);
+                    tfp->open (file_name);
+                }
             }
-            tfp->dump(tb_time);
+            if (trc_idx >= min_idx)
+            {
+                tfp->dump(tb_time);
+            }
         }
-#endif
+#endif /* VM_TRACE */
 
-        if (top->CLOCK_50 && top->v->frame) {
-          int addr = 0;
-          for(int y = 0; y < 64; y++) {
-            addr = y * (1024 >> 2);
-            for(int x = 0; x < 640; x++) {
-              uint8_t dot = VRAM[addr] & (1 << (3 - (x & 3)));
-              // uint8_t dot = VRAM[addr] & (1 << (x & 3));
-              RGBApixel pixel;
-              pixel.Red   = (dot) ? 0 : 255;
-              pixel.Green = (dot) ? 0 : 255;
-              pixel.Blue  = (dot) ? 0 : 255;
-              bmp->SetPixel(x, y, pixel);
-              if ((x & 3) == 3) addr++;
+        if (fr_tgl != top->v->the_z88->w_vga_fr_tgl)
+        {
+            for (int y = 0; y < 64; y++)
+            {
+                for (int x = 0; x < 320; x++)
+                {
+                    int addr = (x << 6) + ((y + 16) & 63);
+                    vluint8_t dot = VRAM[addr];
+                    RGBApixel pixel[2];
+                    
+                    switch (dot)
+                    {
+                        case 0:
+                        case 4:
+                        {
+                            pixel[0].Red = pixel[0].Green = pixel[0].Blue = 0xFF;
+                            pixel[1].Red = pixel[1].Green = pixel[1].Blue = 0xFF;
+                            break;
+                        }
+                        case 1:
+                        {
+                            pixel[0].Red = pixel[0].Green = pixel[0].Blue = 0x00;
+                            pixel[1].Red = pixel[1].Green = pixel[1].Blue = 0xFF;
+                            break;
+                        }
+                        case 2:
+                        {
+                            pixel[0].Red = pixel[0].Green = pixel[0].Blue = 0xFF;
+                            pixel[1].Red = pixel[1].Green = pixel[1].Blue = 0x00;
+                            break;
+                        }
+                        case 3:
+                        {
+                            pixel[0].Red = pixel[0].Green = pixel[0].Blue = 0x00;
+                            pixel[1].Red = pixel[1].Green = pixel[1].Blue = 0x00;
+                            break;
+                        }
+                        case 5:
+                        {
+                            pixel[0].Red = pixel[0].Green = pixel[0].Blue = 0x77;
+                            pixel[1].Red = pixel[1].Green = pixel[1].Blue = 0xFF;
+                            break;
+                        }
+                        case 6:
+                        {
+                            pixel[0].Red = pixel[0].Green = pixel[0].Blue = 0xFF;
+                            pixel[1].Red = pixel[1].Green = pixel[1].Blue = 0x77;
+                            break;
+                        }
+                        case 7:
+                        {
+                            pixel[0].Red = pixel[0].Green = pixel[0].Blue = 0x77;
+                            pixel[1].Red = pixel[1].Green = pixel[1].Blue = 0x77;
+                            break;
+                        }
+                    }
+                    bmp->SetPixel(x*2,   y, pixel[1]);
+                    bmp->SetPixel(x*2+1, y, pixel[0]);
+                }
             }
-          }
-          sprintf(file_name, "vid_%04d.bmp", bmp_idx);
-          bmp->WriteToFile(file_name);
-          bmp_idx++;
+            sprintf(file_name, "vid_%04d.bmp", bmp_idx);
+            bmp->WriteToFile(file_name);
+            bmp_idx++;
+            fr_tgl = top->v->the_z88->w_vga_fr_tgl;
         }
 
         // Next simulation step
@@ -346,7 +501,7 @@ int main(int argc, char **argv, char **env)
 
         if ((tb_sstep & 4095) == 0)
         {
-            printf("\r%lu us", tb_time / 1000000 );
+            printf("\r%lu us", tb_time / 1000000L );
             fflush(stdout);
         }
 

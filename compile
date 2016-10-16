@@ -1,23 +1,24 @@
 #! /bin/sh
 
 #Options for GCC compiler
-COMPILE_OPT="-cc -O3 -CFLAGS -Wno-attributes"
+COMPILE_OPT="-cc -O3 -CFLAGS -Wno-attributes -CFLAGS -O2"
 
 #Comment this line to disable VCD generation
-TRACE_OPT="-trace"
+TRACE_OPT="-trace -no-trace-params"
 
 #Verilog top module
-TOP_FILE=z88_de1
+TOP_FILE=z88_de1_top
 
 #C++ support files
 CPP_FILES=\
 "main.cpp\
+ verilated_dpi.cpp\
  EasyBMP.cpp\
  z80ex_dasm.cpp"
 
 #Cleanup previous output
 rm -f z88_*.vcd
-rm -f z88_dasm.log
+rm -f z88_dasm_*.log
 rm -f vid_*.bmp
 
 verilator $TOP_FILE.v $COMPILE_OPT $TRACE_OPT -top-module $TOP_FILE -exe $CPP_FILES
