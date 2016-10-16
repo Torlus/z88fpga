@@ -74,6 +74,7 @@ module z88_top
     wire        w_z80_mreq_n /* verilator public */;
     wire        w_z80_iorq_n;
     wire        w_z80_rd_n;
+    wire        w_z80_wr_n;
     wire        w_z80_halt_n /* verilator public */;
     
     wire        w_z80_int_n;
@@ -90,9 +91,9 @@ module z88_top
     
     assign w_z80_clk_ena = r_clk_ena[3] & ~r_bus_ph;
     assign w_z80_mem_rd  = ~w_z80_mreq_n & ~w_z80_rd_n;
-    assign w_z80_mem_wr  = ~w_z80_mreq_n &  w_z80_rd_n;
+    assign w_z80_mem_wr  = ~w_z80_mreq_n & ~w_z80_wr_n;
     assign w_z80_io_rd   = ~w_z80_iorq_n & ~w_z80_rd_n;
-    assign w_z80_io_wr   = ~w_z80_iorq_n &  w_z80_rd_n;
+    assign w_z80_io_wr   = ~w_z80_iorq_n & ~w_z80_wr_n;
     
     tv80s the_z80
     (
@@ -104,7 +105,7 @@ module z88_top
         .mreq_n     (w_z80_mreq_n),
         .iorq_n     (w_z80_iorq_n),
         .rd_n       (w_z80_rd_n),
-        .wr_n       (/* open */),
+        .wr_n       (w_z80_wr_n),
         .rfsh_n     (/* open */),
         .halt_n     (w_z80_halt_n),
         .busak_n    (/* open */),
