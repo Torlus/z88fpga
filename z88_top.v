@@ -33,6 +33,8 @@ module z88_top
     output         vga_de,
     output  [11:0] vga_rgb
 );
+    //parameter RAM_ADDR_MASK  = 32'h0007FFFF; // 512 KB
+    parameter RAM_ADDR_MASK  = 32'h00007FFF; //  32 KB
     parameter RAM_DATA_WIDTH = 16;
     parameter ROM_DATA_WIDTH = 8;
 
@@ -372,13 +374,13 @@ module z88_top
             // Internal RAM (Slot 0)
             if (RAM_DATA_WIDTH == 8) begin
                 r_ram_be_n  <= 2'b10;
-                r_ram_addr  <= w_lcd_phy_addr[18:0] | w_cpu_phy_addr[18:0];
+                r_ram_addr  <= (w_lcd_phy_addr[18:0] | w_cpu_phy_addr[18:0]) & RAM_ADDR_MASK[18:0];
                 r_ram_rdata <= { 8'h00, ram_rdata[7:0] };
                 r_ram_wdata <= { 8'h00, w_z80_wdata };
             end
             else begin
                 r_ram_be_n  <= (w_lcd_phy_addr[0] | w_cpu_phy_addr[0]) ? 2'b01 : 2'b10;
-                r_ram_addr  <= { 1'b0, w_lcd_phy_addr[18:1] | w_cpu_phy_addr[18:1] };
+                r_ram_addr  <= { 1'b0, (w_lcd_phy_addr[18:1] | w_cpu_phy_addr[18:1]) & RAM_ADDR_MASK[18:1] };
                 r_ram_rdata <= ram_rdata[15:0];
                 r_ram_wdata <= { w_z80_wdata, w_z80_wdata };
             end
