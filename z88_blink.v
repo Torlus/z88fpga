@@ -75,30 +75,32 @@ module z88_blink
     
     always @(posedge clk) begin : REAL_TIME_CLK
         reg v_tick_5ms;
+        reg v_tick_640ms;
         reg v_tick_1sec;
         reg v_tick_1min;
         reg v_inc_mid;
         reg v_inc_msb;
     
         if ((rst & r_flap_cc[2]) | r_COM[4]) begin
-            r_div_5ms   <= 15'd1;
-            r_TIM0      <= 8'd0;
-            r_TIM1      <= 6'd0;
-            r_TIM2      <= 8'd0;
-            r_TIM3      <= 8'd0;
-            r_TIM4      <= 5'd0;
-            r_rtc_irq   <= 3'b000;
+            r_div_5ms    <= 15'd1;
+            r_TIM0       <= 8'd0;
+            r_TIM1       <= 6'd0;
+            r_TIM2       <= 8'd0;
+            r_TIM3       <= 8'd0;
+            r_TIM4       <= 5'd0;
+            r_rtc_irq    <= 3'b000;
             
-            v_tick_5ms  <= 1'b0;
-            v_tick_1sec <= 1'b0;
-            v_tick_1min <= 1'b0;
-            v_inc_mid   <= 1'b0;
-            v_inc_msb   <= 1'b0;
+            v_tick_5ms   <= 1'b0;
+            v_tick_640ms <= 1'b0;
+            v_tick_1sec  <= 1'b0;
+            v_tick_1min  <= 1'b0;
+            v_inc_mid    <= 1'b0;
+            v_inc_msb    <= 1'b0;
         end
         else begin
             if (clk_ena & bus_ph) begin
                 if (v_tick_5ms) begin
-                    if (v_tick_1sec) begin
+                    if (v_tick_640ms) begin
                         if (v_tick_1min) begin
                             if (v_inc_mid) begin
                                 if (v_inc_msb) begin
@@ -122,6 +124,8 @@ module z88_blink
                         else begin
                             r_TIM1 <= r_TIM1 + 6'd1;
                         end
+                    end
+                    if (v_tick_1sec) begin
                         // 200 Hz counter
                         r_TIM0 <= 8'd0;
                     end
@@ -142,11 +146,12 @@ module z88_blink
             r_rtc_irq[2] <= v_tick_5ms & v_tick_1sec & v_tick_1min;
             
             // Comparators
-            v_tick_5ms  <= (r_div_5ms == 15'd31250) ? 1'b1 : 1'b0;
-            v_tick_1sec <= (r_TIM0 == 8'd199) ? 1'b1 : 1'b0;
-            v_tick_1min <= (r_TIM1 == 6'd59) ? 1'b1 : 1'b0;
-            v_inc_mid   <= (r_TIM2 == 8'd255) ? 1'b1 : 1'b0;
-            v_inc_msb   <= (r_TIM3 == 8'd255) ? 1'b1 : 1'b0;
+            v_tick_5ms   <= (r_div_5ms == 15'd31250) ? 1'b1 : 1'b0;
+            v_tick_640ms <= (r_TIM0 == 8'd127) ? 1'b1 : 1'b0;
+            v_tick_1sec  <= (r_TIM0 == 8'd199) ? 1'b1 : 1'b0;
+            v_tick_1min  <= (r_TIM1 == 6'd59) ? 1'b1 : 1'b0;
+            v_inc_mid    <= (r_TIM2 == 8'd255) ? 1'b1 : 1'b0;
+            v_inc_msb    <= (r_TIM3 == 8'd255) ? 1'b1 : 1'b0;
         end
     end
 
@@ -265,6 +270,7 @@ module z88_blink
     assign lcd_on = r_COM[0];
     
     assign z80_int_n = r_int_n;
+    assign z80_nmi_n = 1'b1;
     
     // ========================================================================
     // Blink registers read
