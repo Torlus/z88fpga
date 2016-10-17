@@ -100,7 +100,12 @@ module z88_de1_top
     z88_top
     #(
         .RAM_DATA_WIDTH (16),
-        .ROM_DATA_WIDTH (8)
+        .ROM_DATA_WIDTH (8),
+        `ifdef verilator3
+        .RAM_ADDR_MASK  (32'h00007FFF) // 32 KB
+        `else
+        .RAM_ADDR_MASK  (32'h0007FFFF) // 512 KB
+        `endif
     )
     the_z88
     (
@@ -258,10 +263,76 @@ module z88_de1_top
             if (v_fr_tgl != w_vga_fr_tgl) begin
                 if (v_fr_num == 32'd150) r_kb_matrix_p2[22] <= 1'b1; // Down
                 if (v_fr_num == 32'd151) r_kb_matrix_p2[22] <= 1'b0;
-                if (v_fr_num == 32'd160) r_kb_matrix_p2[22] <= 1'b1; // Down
-                if (v_fr_num == 32'd161) r_kb_matrix_p2[22] <= 1'b0;
-                if (v_fr_num == 32'd170) r_kb_matrix_p2[ 6] <= 1'b1; // Enter
-                if (v_fr_num == 32'd171) r_kb_matrix_p2[ 6] <= 1'b0;
+                if (v_fr_num == 32'd155) r_kb_matrix_p2[22] <= 1'b1; // Down
+                if (v_fr_num == 32'd156) r_kb_matrix_p2[22] <= 1'b0;
+                if (v_fr_num == 32'd160) r_kb_matrix_p2[ 6] <= 1'b1; // Enter
+                if (v_fr_num == 32'd161) r_kb_matrix_p2[ 6] <= 1'b0;
+                if (v_fr_num == 32'd192) r_kb_matrix_p2[45] <= 1'b1; // 1
+                if (v_fr_num == 32'd193) r_kb_matrix_p2[45] <= 1'b0;
+                if (v_fr_num == 32'd196) r_kb_matrix_p2[40] <= 1'b1; // 0
+                if (v_fr_num == 32'd197) r_kb_matrix_p2[40] <= 1'b0;
+                if (v_fr_num == 32'd200) r_kb_matrix_p2[46] <= 1'b1; // Space
+                if (v_fr_num == 32'd201) r_kb_matrix_p2[46] <= 1'b0;
+                if (v_fr_num == 32'd204) r_kb_matrix_p2[32] <= 1'b1; // P
+                if (v_fr_num == 32'd205) r_kb_matrix_p2[32] <= 1'b0;
+                if (v_fr_num == 32'd208) r_kb_matrix_p2[20] <= 1'b1; // R
+                if (v_fr_num == 32'd209) r_kb_matrix_p2[20] <= 1'b0;
+                if (v_fr_num == 32'd212) r_kb_matrix_p2[ 8] <= 1'b1; // I
+                if (v_fr_num == 32'd213) r_kb_matrix_p2[ 8] <= 1'b0;
+                if (v_fr_num == 32'd216) r_kb_matrix_p2[ 2] <= 1'b1; // N
+                if (v_fr_num == 32'd217) r_kb_matrix_p2[ 2] <= 1'b0;
+                if (v_fr_num == 32'd220) r_kb_matrix_p2[12] <= 1'b1; // T
+                if (v_fr_num == 32'd221) r_kb_matrix_p2[12] <= 1'b0;
+                if (v_fr_num == 32'd224) r_kb_matrix_p2[46] <= 1'b1; // Space
+                if (v_fr_num == 32'd225) r_kb_matrix_p2[46] <= 1'b0;
+                if (v_fr_num == 32'd228) r_kb_matrix_p2[54] <= 1'b1; // Shift
+                if (v_fr_num == 32'd228) r_kb_matrix_p2[48] <= 1'b1; // "
+                if (v_fr_num == 32'd229) r_kb_matrix_p2[54] <= 1'b0;
+                if (v_fr_num == 32'd229) r_kb_matrix_p2[48] <= 1'b0;
+                if (v_fr_num == 32'd232) r_kb_matrix_p2[12] <= 1'b1; // T
+                if (v_fr_num == 32'd233) r_kb_matrix_p2[12] <= 1'b0;
+                if (v_fr_num == 32'd236) r_kb_matrix_p2[28] <= 1'b1; // E
+                if (v_fr_num == 32'd237) r_kb_matrix_p2[28] <= 1'b0;
+                if (v_fr_num == 32'd240) r_kb_matrix_p2[35] <= 1'b1; // S
+                if (v_fr_num == 32'd241) r_kb_matrix_p2[35] <= 1'b0;
+                if (v_fr_num == 32'd244) r_kb_matrix_p2[12] <= 1'b1; // T
+                if (v_fr_num == 32'd245) r_kb_matrix_p2[12] <= 1'b0;
+                if (v_fr_num == 32'd248) r_kb_matrix_p2[54] <= 1'b1; // Shift
+                if (v_fr_num == 32'd248) r_kb_matrix_p2[48] <= 1'b1; // "
+                if (v_fr_num == 32'd249) r_kb_matrix_p2[54] <= 1'b0;
+                if (v_fr_num == 32'd249) r_kb_matrix_p2[48] <= 1'b0;
+                if (v_fr_num == 32'd252) r_kb_matrix_p2[ 6] <= 1'b1; // Enter
+                if (v_fr_num == 32'd253) r_kb_matrix_p2[ 6] <= 1'b0;
+                if (v_fr_num == 32'd256) r_kb_matrix_p2[37] <= 1'b1; // 2
+                if (v_fr_num == 32'd257) r_kb_matrix_p2[37] <= 1'b0;
+                if (v_fr_num == 32'd260) r_kb_matrix_p2[40] <= 1'b1; // 0
+                if (v_fr_num == 32'd261) r_kb_matrix_p2[40] <= 1'b0;
+                if (v_fr_num == 32'd264) r_kb_matrix_p2[46] <= 1'b1; // Space
+                if (v_fr_num == 32'd265) r_kb_matrix_p2[46] <= 1'b0;
+                if (v_fr_num == 32'd268) r_kb_matrix_p2[11] <= 1'b1; // G
+                if (v_fr_num == 32'd269) r_kb_matrix_p2[11] <= 1'b0;
+                if (v_fr_num == 32'd272) r_kb_matrix_p2[16] <= 1'b1; // O
+                if (v_fr_num == 32'd273) r_kb_matrix_p2[16] <= 1'b0;
+                if (v_fr_num == 32'd276) r_kb_matrix_p2[12] <= 1'b1; // T
+                if (v_fr_num == 32'd277) r_kb_matrix_p2[12] <= 1'b0;
+                if (v_fr_num == 32'd280) r_kb_matrix_p2[16] <= 1'b1; // O
+                if (v_fr_num == 32'd281) r_kb_matrix_p2[16] <= 1'b0;
+                if (v_fr_num == 32'd284) r_kb_matrix_p2[46] <= 1'b1; // Space
+                if (v_fr_num == 32'd285) r_kb_matrix_p2[46] <= 1'b0;
+                if (v_fr_num == 32'd288) r_kb_matrix_p2[45] <= 1'b1; // 1
+                if (v_fr_num == 32'd289) r_kb_matrix_p2[45] <= 1'b0;
+                if (v_fr_num == 32'd292) r_kb_matrix_p2[40] <= 1'b1; // 0
+                if (v_fr_num == 32'd293) r_kb_matrix_p2[40] <= 1'b0;
+                if (v_fr_num == 32'd296) r_kb_matrix_p2[ 6] <= 1'b1; // Enter
+                if (v_fr_num == 32'd297) r_kb_matrix_p2[ 6] <= 1'b0;
+                if (v_fr_num == 32'd300) r_kb_matrix_p2[20] <= 1'b1; // R
+                if (v_fr_num == 32'd301) r_kb_matrix_p2[20] <= 1'b0;
+                if (v_fr_num == 32'd304) r_kb_matrix_p2[ 9] <= 1'b1; // U
+                if (v_fr_num == 32'd305) r_kb_matrix_p2[ 9] <= 1'b0;
+                if (v_fr_num == 32'd308) r_kb_matrix_p2[ 2] <= 1'b1; // N
+                if (v_fr_num == 32'd309) r_kb_matrix_p2[ 2] <= 1'b0;
+                if (v_fr_num == 32'd312) r_kb_matrix_p2[ 6] <= 1'b1; // Enter
+                if (v_fr_num == 32'd313) r_kb_matrix_p2[ 6] <= 1'b0;
                 v_fr_num = v_fr_num + 1;
             end
             v_fr_tgl <= w_vga_fr_tgl;
