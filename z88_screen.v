@@ -144,17 +144,33 @@ module z88_screen
     // LCD address generator
     // ========================================================================
 
-    reg  [21:0] r_lcd_addr; // 4 MB address space
-    wire [21:9] w_pix_page; // Character pixel page
+    reg [21:0] r_lcd_addr; // 4 MB address space
+    reg [21:9] r_pix_page; // Character pixel page
 
-    assign w_pix_page =
-    (~w_hires) ?
-      (r_SBA[8:6] == 3'b111) ?
-            {r_PB0[12:0]}                           // HRS=0; Lores0 (ROM)
-          : {r_PB1[9:0], r_SBA[8:6]}                // Lores1 (RAM)
-    : (r_SBA[9:8] == 2'b11) ?
-            {r_PB3[10:0], r_SBA[7:6]}               // HRS=1; Hires1 (RAM)
-          : {r_PB2[8:0], r_SBA[9:6]};               // Hires0 (ROM)
+    
+    always @(posedge rst or posedge clk) begin : PIX_PAGE_GEN
+    
+        if (rst) begin
+            r_pix_page <= 13'd0;
+        end
+        else begin
+            // Address translation
+            casez ({ w_hires & ~w_cursor, r_SBA[9:6] })
+                // Lo-res RAM (7 x 64 chars)
+                5'b0?0?? : r_pix_page <= { r_PB1[9:0], r_SBA[8:6] };
+                5'b0?10? : r_pix_page <= { r_PB1[9:0], r_SBA[8:6] };
+                5'b0?110 : r_pix_page <= { r_PB1[9:0], r_SBA[8:6] };
+                // Lo-res ROM (1 x 64 chars)
+                5'b0?111 : r_pix_page <= { r_PB0[12:0]        };
+                // Hi-res ROM (3 x 256 chars)
+                5'b100?? : r_pix_page <= { r_PB2[8:0], r_SBA[9:6] };
+                5'b101?? : r_pix_page <= { r_PB2[8:0], r_SBA[9:6] };
+                5'b110?? : r_pix_page <= { r_PB2[8:0], r_SBA[9:6] };
+                // Hi-res RAM (1 x 256 chars)
+                5'b111?? : r_pix_page <= { r_PB3[10:0], r_SBA[7:6] };
+            endcase
+        end
+    end
 
     always @(*) begin : LCD_ADDR_GEN
 
@@ -244,7 +260,7 @@ module z88_screen
                     2'b00 : r_gfx_dat_p1[7:0] <=              v_gfx_p0;
                     2'b01 : r_gfx_dat_p1[7:0] <= (r_blink) ?  v_gfx_p0 : 8'h00;
                     2'b10 : r_gfx_dat_p1[7:0] <=             ~v_gfx_p0;
-                    2'b11 : r_gfx_dat_p1[7:0] <= (r_blink) ? ~v_gfx_p0 : 8'h00;
+                    2'b11 : r_gfx_dat_p1[7:0] <= (r_blink) ? ~v_gfx_p0 : v_gfx_p0;
                 endcase
                 // Gray effect
                 r_gfx_dat_p1[8] <= w_gray;
