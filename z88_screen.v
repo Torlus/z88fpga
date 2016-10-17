@@ -147,9 +147,9 @@ module z88_screen
     reg [21:0] r_lcd_addr; // 4 MB address space
     reg [21:9] r_pix_page; // Character pixel page
 
-    
+
     always @(posedge rst or posedge clk) begin : PIX_PAGE_GEN
-    
+
         if (rst) begin
             r_pix_page <= 13'd0;
         end
@@ -182,7 +182,7 @@ module z88_screen
                 // Read SBA MSB
                 {22{r_lcd_cyc[1]}} & { r_SBR[10:0], r_row_ctr[5:3], r_col_ctr[6:0], 1'b1 } |
                 // Read Pixels
-                {22{r_lcd_cyc[2]}} & { w_pix_page[21:9], r_SBA[5:0], r_row_ctr[2:0] };
+                {22{r_lcd_cyc[2]}} & { r_pix_page[21:9], r_SBA[5:0], r_row_ctr[2:0] };
         end
         else begin
             r_lcd_addr = 22'd0;
