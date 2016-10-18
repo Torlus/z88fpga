@@ -1,0 +1,6 @@
+#! /bin/sh
+
+#Cleanup previous output
+rm -f z88_*.vcd
+rm -f z88_dasm_*.log
+rm -f vid_*.bmp

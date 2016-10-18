@@ -9,7 +9,7 @@
 
 #include "Vz88_de1_top.h"
 #include "Vz88_de1_top_z88_de1_top.h"
-#include "Vz88_de1_top_z88_top.h"
+#include "Vz88_de1_top_z88_top__R7fff.h"
 #include "Vz88_de1_top_z88_blink.h"
 #include "Vz88_de1_top_tv80s.h"
 #include "Vz88_de1_top_tv80_reg.h"
@@ -104,7 +104,7 @@ int main(int argc, char **argv, char **env)
     beg = time(0);
 
     Verilated::commandArgs(argc, argv);
-    
+
     // Simulation duration : +usec=<num>
     arg = Verilated::commandArgsPlusMatch("usec=");
     if ((arg) && (arg[0]))
@@ -112,7 +112,7 @@ int main(int argc, char **argv, char **env)
         arg += 6;
         max_step = (vluint64_t)atoi(arg) * (vluint64_t)1000000L / STEP_PS;
     }
-    
+
     // Simulation duration : +msec=<num>
     arg = Verilated::commandArgsPlusMatch("msec=");
     if ((arg) && (arg[0]))
@@ -120,7 +120,7 @@ int main(int argc, char **argv, char **env)
         arg += 6;
         max_step = (vluint64_t)atoi(arg) * (vluint64_t)1000000000L / STEP_PS;
     }
-    
+
     // Simulation duration : +sec=<num>
     arg = Verilated::commandArgsPlusMatch("sec=");
     if ((arg) && (arg[0]))
@@ -128,7 +128,7 @@ int main(int argc, char **argv, char **env)
         arg += 5;
         max_step = (vluint64_t)atoi(arg) * (vluint64_t)1000000000000L / STEP_PS;
     }
-    
+
     // Trace start index : +tidx=<num>
     arg = Verilated::commandArgsPlusMatch("tidx=");
     if ((arg) && (arg[0]))
@@ -248,7 +248,7 @@ int main(int argc, char **argv, char **env)
         rom_dly[3] = rom_dly[2];
         rom_dly[2] = rom_dly[1];
         rom_dly[1] = rom_dly[0];
-        
+
         // Read only
         if (!top->FL_OE_N && !top->FL_CE_N)
         {
@@ -264,7 +264,7 @@ int main(int argc, char **argv, char **env)
 
         // Simulate RAM behaviour
         top->SRAM_D = ram_dly; // 10ns latency
-        
+
         // Read
         if (!top->SRAM_OE_N && !top->SRAM_CE_N)
         {
@@ -278,7 +278,7 @@ int main(int argc, char **argv, char **env)
             ram_dly = 0xFFFF;
         }
         //top->SRAM_D = ram_dly; // Debug : no latency
-        
+
         // Write
         if (!top->SRAM_WE_N && !top->SRAM_CE_N)
         {
@@ -291,10 +291,10 @@ int main(int argc, char **argv, char **env)
         // Simulate VRAM behaviour
         if (top->CLOCK_50)
         {
-            if (top->v->the_z88->w_lcd_vram_we)
+            if (top->z88_de1_top->the_z88->w_lcd_vram_we)
             {
-                VRAM[top->v->the_z88->w_lcd_vram_addr & (VRAM_SIZE-1)] =
-                    (top->v->the_z88->w_lcd_vram_data & 7);
+                VRAM[top->z88_de1_top->the_z88->w_lcd_vram_addr & (VRAM_SIZE-1)] =
+                    (top->z88_de1_top->the_z88->w_lcd_vram_data & 7);
             }
         }
 
@@ -304,10 +304,10 @@ int main(int argc, char **argv, char **env)
         // Disassembly
         if (log_idx >= min_idx)
         {
-            if (!top->v->the_z88->w_z80_m1_n &&
-                !top->v->the_z88->w_z80_mreq_n &&
-                 top->v->the_z88->w_z80_clk_ena &&
-                 top->v->the_z88->w_z80_halt_n &&
+            if (!top->z88_de1_top->the_z88->w_z80_m1_n &&
+                !top->z88_de1_top->the_z88->w_z80_mreq_n &&
+                 top->z88_de1_top->the_z88->w_z80_clk_ena &&
+                 top->z88_de1_top->the_z88->w_z80_halt_n &&
                  m1_prev)
             {
                 if (first)
@@ -335,23 +335,23 @@ int main(int argc, char **argv, char **env)
                     }
                 }
                 first = true;
-                opc[opcn++] = top->v->the_z88->r_z80_rdata;
-                regPC = top->v->the_z88->the_z80->i_tv80_core->PC;
-                regSP = top->v->the_z88->the_z80->i_tv80_core->SP;
-                regA  = top->v->the_z88->the_z80->i_tv80_core->ACC;
-                regF  = top->v->the_z88->the_z80->i_tv80_core->F;
-                regB  = top->v->the_z88->the_z80->i_tv80_core->i_reg->B;
-                regC  = top->v->the_z88->the_z80->i_tv80_core->i_reg->C;
-                regD  = top->v->the_z88->the_z80->i_tv80_core->i_reg->D;
-                regE  = top->v->the_z88->the_z80->i_tv80_core->i_reg->E;
-                regH  = top->v->the_z88->the_z80->i_tv80_core->i_reg->H;
-                regL  = top->v->the_z88->the_z80->i_tv80_core->i_reg->L;
-                regIX = top->v->the_z88->the_z80->i_tv80_core->i_reg->IX;
-                regIY = top->v->the_z88->the_z80->i_tv80_core->i_reg->IY;
+                opc[opcn++] = top->z88_de1_top->the_z88->r_z80_rdata;
+                regPC = top->z88_de1_top->the_z88->the_z80->i_tv80_core->PC;
+                regSP = top->z88_de1_top->the_z88->the_z80->i_tv80_core->SP;
+                regA  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->ACC;
+                regF  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->F;
+                regB  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->B;
+                regC  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->C;
+                regD  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->D;
+                regE  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->E;
+                regH  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->H;
+                regL  = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->L;
+                regIX = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->IX;
+                regIY = top->z88_de1_top->the_z88->the_z80->i_tv80_core->i_reg->IY;
                 seg0  = (regPC>>13 & 0x07);
                 seg   = (regPC>>14 & 0x03);
-                com   = top->v->the_z88->the_blink->r_COM;
-                
+                com   = top->z88_de1_top->the_z88->the_blink->r_COM;
+
                 if (!seg0)
                 {
                     if (com & 0x04)
@@ -367,31 +367,31 @@ int main(int argc, char **argv, char **env)
                 {
                     switch (seg)
                     {
-                        case 0: { bnk = top->v->the_z88->the_blink->r_SR0; break; }
-                        case 1: { bnk = top->v->the_z88->the_blink->r_SR1; break; }
-                        case 2: { bnk = top->v->the_z88->the_blink->r_SR2; break; }
-                        case 3: { bnk = top->v->the_z88->the_blink->r_SR3; break; }
+                        case 0: { bnk = top->z88_de1_top->the_z88->the_blink->r_SR0; break; }
+                        case 1: { bnk = top->z88_de1_top->the_z88->the_blink->r_SR1; break; }
+                        case 2: { bnk = top->z88_de1_top->the_z88->the_blink->r_SR2; break; }
+                        case 3: { bnk = top->z88_de1_top->the_z88->the_blink->r_SR3; break; }
                     }
                 }
             }
-            if (top->v->the_z88->w_z80_m1_n &&
-               !top->v->the_z88->w_z80_mreq_n &&
-                top->v->the_z88->w_z80_clk_ena &&
-                top->v->the_z88->w_z80_halt_n &&
+            if (top->z88_de1_top->the_z88->w_z80_m1_n &&
+               !top->z88_de1_top->the_z88->w_z80_mreq_n &&
+                top->z88_de1_top->the_z88->w_z80_clk_ena &&
+                top->z88_de1_top->the_z88->w_z80_halt_n &&
                 mreq_prev)
             {
-                opc[opcn++] = top->v->the_z88->r_z80_rdata;
+                opc[opcn++] = top->z88_de1_top->the_z88->r_z80_rdata;
             }
         }
-        m1_prev  = !top->v->the_z88->w_z80_m1_n &&
-                   !top->v->the_z88->w_z80_mreq_n &&
-                    top->v->the_z88->w_z80_clk_ena;
-        
-        mreq_prev = top->v->the_z88->w_z80_m1_n &&
-                   !top->v->the_z88->w_z80_mreq_n &&
-                    top->v->the_z88->w_z80_clk_ena;
-                    
-        if (fr_tgl != top->v->the_z88->w_vga_fr_tgl)
+        m1_prev  = !top->z88_de1_top->the_z88->w_z80_m1_n &&
+                   !top->z88_de1_top->the_z88->w_z80_mreq_n &&
+                    top->z88_de1_top->the_z88->w_z80_clk_ena;
+
+        mreq_prev = top->z88_de1_top->the_z88->w_z80_m1_n &&
+                   !top->z88_de1_top->the_z88->w_z80_mreq_n &&
+                    top->z88_de1_top->the_z88->w_z80_clk_ena;
+
+        if (fr_tgl != top->z88_de1_top->the_z88->w_vga_fr_tgl)
         {
             // New log file
             if (log_idx >= min_idx) fclose(logger);
@@ -403,14 +403,14 @@ int main(int argc, char **argv, char **env)
                 logger = fopen(file_name, "wb");
             }
         }
-            
+
 
 
 #if VM_TRACE
         // Dump signals into VCD file
         if (tfp)
         {
-            if (fr_tgl != top->v->the_z88->w_vga_fr_tgl)
+            if (fr_tgl != top->z88_de1_top->the_z88->w_vga_fr_tgl)
             {
                 // New VCD file
                 if (trc_idx >= min_idx) tfp->close();
@@ -429,7 +429,7 @@ int main(int argc, char **argv, char **env)
         }
 #endif /* VM_TRACE */
 
-        if (fr_tgl != top->v->the_z88->w_vga_fr_tgl)
+        if (fr_tgl != top->z88_de1_top->the_z88->w_vga_fr_tgl)
         {
             for (int y = 0; y < 64; y++)
             {
@@ -438,7 +438,7 @@ int main(int argc, char **argv, char **env)
                     int addr = (x << 6) + ((y + 16) & 63);
                     vluint8_t dot = VRAM[addr];
                     RGBApixel pixel[2];
-                    
+
                     switch (dot)
                     {
                         case 0:
@@ -492,7 +492,7 @@ int main(int argc, char **argv, char **env)
             sprintf(file_name, "vid_%04d.bmp", bmp_idx);
             bmp->WriteToFile(file_name);
             bmp_idx++;
-            fr_tgl = top->v->the_z88->w_vga_fr_tgl;
+            fr_tgl = top->z88_de1_top->the_z88->w_vga_fr_tgl;
         }
 
         // Next simulation step
